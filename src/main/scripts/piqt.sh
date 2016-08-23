@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 2012-2015 Andrea Selva
+# Copyright (c) 2016 PIAX development team
 #
 
 echo "  _____  __   ______  ______  "
