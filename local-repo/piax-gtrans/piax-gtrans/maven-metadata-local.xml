@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>piax-gtrans</groupId>
+  <artifactId>piax-gtrans</artifactId>
+  <versioning>
+    <versions>
+      <version>3.1.0-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20160819024947</lastUpdated>
+  </versioning>
+</metadata>

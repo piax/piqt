@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>moquette-netty-parser</groupId>
+  <artifactId>moquette-netty-parser</artifactId>
+  <versioning>
+    <release>PATCHED</release>
+    <versions>
+      <version>PATCHED</version>
+    </versions>
+    <lastUpdated>20160819024951</lastUpdated>
+  </versioning>
+</metadata>

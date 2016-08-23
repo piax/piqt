@@ -1,0 +1,7 @@
+PIQT is a Java implementation of a peer-to-peer based distributed
+pub/sub broker. PIQT connects applications via topic-base pub/sub
+(Conforms MQTT 3.1 standard). PIQT is based on a distributed
+edge-broker model. It connects brokers via P2P structured overlays.
+
+PIQT is an abbreviation of "P2P Integrated Quick TBPS"
+or maybe "PIax and mQTt" :).
