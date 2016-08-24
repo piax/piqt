@@ -93,8 +93,8 @@ public class Launcher {
 
     long startDate;
 
-    private String version() {
-        return "1.0.1";
+    public static String version() {
+        return Launcher.class.getPackage().getImplementationVersion();
     }
 
     public synchronized static Launcher getInstance() {

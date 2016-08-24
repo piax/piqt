@@ -45,5 +45,5 @@ LOG_FILE=$PIQT_HOME/config/logging.properties
 PIQT_PATH=$PIQT_HOME
 JAVA_OPTS_SCRIPT="-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true"
 
-$JAVA $JAVA_OPTS $JAVA_OPTS_SCRIPT -Djava.util.logging.config.file="$LOG_FILE" -Duser.home="$PIQT_HOME" -Dpiqt.path="$PIQT_HOME" -cp "$PIQT_HOME/lib/*" org.piqt.web.Launcher
+$JAVA $JAVA_OPTS $JAVA_OPTS_SCRIPT -Djava.util.logging.config.file="$LOG_FILE" -Duser.home="$PIQT_HOME" -Dpiqt.path="$PIQT_HOME" -cp "$PIQT_HOME/lib/*" org.piqt.web.Launcher $@
 
