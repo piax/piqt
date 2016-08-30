@@ -39,6 +39,8 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
     ProtocolProcessor pp;
     PeerId peerId;
     long receviedMessagesFromPIAX;
+    
+    static public String PEER_CLIENT_ID = "mqttpiax"; // XXX it is embedded in modified moquette.
 
     public PeerMqEngineMoquette(Overlay<Destination, LATKey> overlay,
             Properties config) throws MqException {
@@ -101,8 +103,8 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
         msg.setTopicName(m.getTopic());
         msg.setQos(QOSType.valueOf((byte) m.getQos()));
         msg.setPayload(ByteBuffer.wrap(m.getPayload()));
-        msg.setMessageID(pp.getNextPacketID("piqt"));
-        pp.executePublish("piqt", msg);
+        msg.setMessageID(pp.getNextPacketID(PEER_CLIENT_ID));
+        pp.executePublish(PEER_CLIENT_ID, msg);
         receviedMessagesFromPIAX++;
     }
 
