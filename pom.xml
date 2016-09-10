@@ -12,6 +12,16 @@
       <id>local</id>
       <url>file:local-repo</url>
     </repository>
+    <repository>
+      <id>bintray</id>
+      <url>http://dl.bintray.com/andsel/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
   </repositories>
   <dependencies>
     <!-- Test dependencies -->
@@ -28,19 +38,15 @@
       <version>3.1.0-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>moquette-broker</groupId>
+      <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
-      <version>PATCHED</version>
+      <version>0.8.1</version>
     </dependency>
+    <!-- hazelcast -->
     <dependency>
-      <groupId>moquette-netty-parser</groupId>
-      <artifactId>moquette-netty-parser</artifactId>
-      <version>PATCHED</version>
-    </dependency>
-    <dependency>
-      <groupId>moquette-parser-commons</groupId>
-      <artifactId>moquette-parser-commons</artifactId>
-      <version>PATCHED</version> 
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast</artifactId>
+      <version>3.5.4</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.ow2.asm/asm-all -->
     <dependency>
