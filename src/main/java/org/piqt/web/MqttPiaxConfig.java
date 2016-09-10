@@ -10,6 +10,9 @@
  */
 package org.piqt.web;
 
+import static org.piqt.peer.Util.isEmpty;
+import static org.piqt.peer.Util.isOnlySpace;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -19,9 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.regex.Pattern;
-
-import static org.piqt.peer.Util.*;
-import static org.eclipse.moquette.commons.Constants.*;
+import io.moquette.BrokerConstants;
 
 public class MqttPiaxConfig {
     public static final String KEY_PIAX_SEED_IP_ADDRESS = "piax_seed_ip_address";
@@ -137,12 +138,15 @@ public class MqttPiaxConfig {
 
     public Properties toMQTTProps() throws IOException {
         Properties ret = new Properties();
-        ret.setProperty(HOST_PROPERTY_NAME, p.get(KEY_MQTT_BIND_ADDRESS));
-        ret.setProperty(PORT_PROPERTY_NAME, p.get(KEY_MQTT_PORT));
-        ret.setProperty(PERSISTENT_STORE_PROPERTY_NAME,
+        ret.setProperty(BrokerConstants.HOST_PROPERTY_NAME, p.get(KEY_MQTT_BIND_ADDRESS));
+        ret.setProperty(BrokerConstants.PORT_PROPERTY_NAME, p.get(KEY_MQTT_PORT));
+        ret.setProperty(BrokerConstants.PERSISTENT_STORE_PROPERTY_NAME,
                 p.get(KEY_MQTT_PERSISTENT_STORE));
-        ret.setProperty(ALLOW_ANONYMOUS_PROPERTY_NAME,
+        ret.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME,
                 p.get(KEY_MQTT_ALLOW_ANONYMOUS));
+        
+        // do not open web socket port.
+        ret.setProperty(BrokerConstants.WEB_SOCKET_PORT_PROPERTY_NAME, BrokerConstants.DISABLED_PORT_BIND);
 
         File tmpFile = File.createTempFile("tmp_password_", ".conf");
         BufferedWriter bw = new BufferedWriter(new FileWriter(tmpFile));
@@ -162,7 +166,7 @@ public class MqttPiaxConfig {
             }
         }
         bw.close();
-        ret.setProperty(PASSWORD_FILE_PROPERTY_NAME, tmpFile.getPath());
+        ret.setProperty(BrokerConstants.PASSWORD_FILE_PROPERTY_NAME, tmpFile.getPath());
 
         String acls = p.get(KEY_MQTT_ACL);
         if (acls != null && !acls.equals("")) {
@@ -171,11 +175,11 @@ public class MqttPiaxConfig {
             bw2.write(acls);
             bw2.newLine();
             bw2.close();
-            ret.setProperty(ACL_FILE_PROPERTY_NAME, tmpFile2.getPath());
+            ret.setProperty(BrokerConstants.ACL_FILE_PROPERTY_NAME, tmpFile2.getPath());
         }
 
-        ret.setProperty(AUTHENTICATOR_CLASS_NAME, "");
-        ret.setProperty(AUTHORIZATOR_CLASS_NAME, "");
+        ret.setProperty(BrokerConstants.AUTHENTICATOR_CLASS_NAME, "org.piqt.peer.PIQTAuthenticator");
+        ret.setProperty(BrokerConstants.AUTHORIZATOR_CLASS_NAME, "org.piqt.peer.PIQTAuthorizator");
 
         /* The following line is TODO
         ret.setProperty(SSL_PORT_PROPERTY_NAME, "8883");

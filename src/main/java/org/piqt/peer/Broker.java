@@ -10,14 +10,19 @@
  */
 package org.piqt.peer;
 
+import io.moquette.interception.InterceptHandler;
+//import io.moquette.server.Server;
+import io.moquette.server.config.ClasspathConfig;
+import io.moquette.server.config.IConfig;
+import io.moquette.server.config.MemoryConfig;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.eclipse.moquette.server.Server;
-import org.eclipse.moquette.server.config.ClasspathConfig;
-import org.eclipse.moquette.server.config.IConfig;
 import org.piqt.MqException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,20 +37,18 @@ public class Broker {
 
     private IConfig config = null;
     private Properties properties = null;
-    private Server mqttBroker = null;
+    public Server server = null;
+    public Observer observer = null;
     PeerMqEngineMoquette engine;
 
     public Broker(PeerMqEngineMoquette engine, Properties web_config) {
         if (web_config == null) {
             config = new ClasspathConfig();
-            config.setProperty("websocket_port", "");
             config.setProperty("port", String.valueOf(port));
             ++port;
         } else {
             properties = web_config;
-            properties.setProperty("websocket_port", "");
         }
-        System.setProperty("intercept.handler", "org.piqt.peer.Observer");
         this.engine = engine;
     }
 
@@ -62,16 +65,19 @@ public class Broker {
         engineMap.remove(Thread.currentThread());
     }
 
-    public void start() throws MqException {
-        if (mqttBroker == null) {
-            mqttBroker = new Server();
+    public void start(Observer observer) throws MqException {
+        if (server == null) {
+            server = new Server();
         }
+        List<InterceptHandler> lh = new ArrayList<InterceptHandler>();
         try {
             putEngine(engine);
+            lh.add(observer);
             if (properties != null) {
-                mqttBroker.startServer(properties);
+                IConfig config = new MemoryConfig(properties);
+                server.startServer(config, lh, observer);
             } else {
-                mqttBroker.startServer(config);
+                server.startServer(config);
             }
         } catch (IOException e) {
             logger.error("MQTT Broker not started: " + engine);
@@ -85,9 +91,9 @@ public class Broker {
     public void stop() {
         logger.info("MQTT Broker Stopping: " + engine + " th = "
                 + Thread.currentThread());
-        if (mqttBroker != null) {
-            mqttBroker.stopServer();
-            mqttBroker = null;
+        if (server != null) {
+            server.stopServer();
+            server = null;
         }
         logger.info("MQTT Broker stopped: " + engine);
     }

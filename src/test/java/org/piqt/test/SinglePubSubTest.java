@@ -10,11 +10,12 @@
  */
 package org.piqt.test;
 
+import io.moquette.server.Server;
+import io.moquette.server.config.ClasspathConfig;
+import io.moquette.server.config.IConfig;
+
 import java.net.InetSocketAddress;
 
-import org.eclipse.moquette.server.Server;
-import org.eclipse.moquette.server.config.ClasspathConfig;
-import org.eclipse.moquette.server.config.IConfig;
 import org.junit.Test;
 import org.piax.common.Destination;
 import org.piax.common.PeerId;

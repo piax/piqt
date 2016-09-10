@@ -410,7 +410,7 @@
 				$('#storedTopics').text(data.storedTopics);
 				$('#transferedMessages').text(data.transferedMessages);
 				$('#publishedMessages').text(data.publishedMessages);
-				$('#receivedMessagesFromPIAX').text(data.receivedMessagesFromPIAX);
+				$('#receivedMessagesFromP2P').text(data.receivedMessagesFromPIAX);
 //				$('#connections').DataTable({
 //					data: data.clients,
 //					columns:[ { data: 'clientID'}, {data: 'subscriptions'} ]
@@ -424,9 +424,13 @@
 							return -1;
 					});
 				for (var i in data.clients) {
+                                        var subString = "";
+                                        for (var j in data.clients[i].subscriptions) {
+                                                subString += data.clients[i].subscriptions[j]["topicFilter"] + " ";
+                                        }
 					$('<tr><td>' + data.clients[i].clientID + '</td><td>' +
 	 				data.clients[i].isActive + '</td><td>' +
-					data.clients[i].subscriptions + '</td></tr>')
+					subString + '</td></tr>')
 					.appendTo('#connections')
 				}
 			}
