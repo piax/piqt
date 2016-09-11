@@ -234,7 +234,7 @@ public class PeerMqEngine implements MqEngine,
     }
 
     @Override
-    public void fin() throws MqException {
+    public void fin() {
         peer.fin();
     }
 

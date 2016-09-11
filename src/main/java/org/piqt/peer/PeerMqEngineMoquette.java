@@ -17,14 +17,14 @@ import io.moquette.parser.proto.messages.PublishMessage;
 import io.moquette.spi.impl.ProtocolProcessor;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 
-import org.piax.common.Destination;
-import org.piax.common.PeerId;
-import org.piax.gtrans.ov.Overlay;
+import org.piqt.MqCallback;
+import org.piqt.MqDeliveryToken;
 import org.piqt.MqException;
 import org.piqt.MqMessage;
 import org.piqt.MqTopic;
@@ -36,17 +36,41 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
             .getLogger(PeerMqEngineMoquette.class.getPackage().getName());
     Broker moquette;
     ProtocolProcessor pp;
-    PeerId peerId;
+    //PeerId peerId;
     Observer observer;
     
     static public String PEER_CLIENT_ID = "piqt";
 
-    public PeerMqEngineMoquette(Overlay<Destination, LATKey> overlay,
+    public PeerMqEngineMoquette(String host, int port,
             Properties config) throws MqException {
-        super(overlay);
+        super(host, port);
         moquette = new Broker(this, config);
-        peerId = overlay.getPeerId();
+        //peerId = overlay.getPeerId();
         observer = new Observer(this);
+        
+        setCallback(new MqCallback() {
+            @Override
+            public void deliveryComplete(MqDeliveryToken arg0) {
+                logger.debug("Launcher deliveryComplete: topic="
+                        + arg0.getTopics());
+            }
+
+            @Override
+            public void messageArrived(MqTopic t, MqMessage m) {
+                byte[] body = m.getPayload();
+                String msg = null;
+                try {
+                    msg = new String(body, "UTF-8");
+                } catch (UnsupportedEncodingException e1) {
+                    String msg2 = "Exception caused by debugging codes.";
+                    String detail = stackTraceStr(e1);
+                    logger.debug(msg2 + newline + detail);
+                }
+                logger.debug("Launcher messageArrived: topic=" + m.getTopic()
+                        + " msg=" + msg);
+                write(m);
+            }
+        });
     }
 
     public PeerMqEngineMoquette(String host, int port) throws MqException {
@@ -81,21 +105,19 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
 
     public void publish(String topic, String clientId, byte[] payload, int qos, boolean retain)
             throws MqException {
-        MqMessage m = new MqMessageMoquette(topic, peerId.toString(), clientId);
+        MqMessage m = new MqMessageMoquette(topic, peer.getPeerId().toString(), clientId);
         m.setPayload(payload);
         m.setQos(qos);
         m.setRetained(retain);
         publish(m);
     }
 
-    // callbackから呼び出される。callbackの設定は、Launcherで行っている。
     public void write(MqMessage m) {
         String c = null;
         if (m instanceof MqMessageMoquette) {
             MqMessageMoquette msg = (MqMessageMoquette) m;
-            String p = msg.getPeerId();
             c = msg.getClientId();
-            if (p.equals(peerId.toString())) {
+            if (msg.getPeerId().equals(peer.getPeerId())) {
                 return;
             }
         }

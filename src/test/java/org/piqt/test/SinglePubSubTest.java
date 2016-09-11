@@ -134,13 +134,8 @@ public class SinglePubSubTest {
             // p[i].newBaseChannelTransport((UdpLocator)((i == 0) ? loc : new
             // UdpLocator(new InetSocketAddress("localhost", port++))))
             // , cid)));
-            szk[i] = new Suzaku<Destination, LATKey>(
-                    c[i] = new EvalTransport<UdpLocator>(
-                            p[i].newBaseChannelTransport((UdpLocator) ((i == 0) ? loc
-                                    : new UdpLocator(new InetSocketAddress(
-                                            "localhost", port++)))), cid));
 
-            e[i] = new PeerMqEngineMoquette(szk[i], null);
+            e[i] = new PeerMqEngineMoquette("localhost", port++, null);
             e[i].setSeed("localhost", startPort);
             e[i].setClusterId(cid.toString());
             e[i].setCallback(new MqCallback() {
