@@ -10,9 +10,10 @@ import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.interception.messages.InterceptSubscribeMessage;
 import io.moquette.interception.messages.InterceptUnsubscribeMessage;
 import io.moquette.parser.proto.messages.AbstractMessage.QOSType;
-import io.moquette.spi.ISessionsStore;
+import io.moquette.spi.impl.subscriptions.Subscription;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import org.piqt.MqException;
 import org.piqt.MqMessage;
@@ -115,16 +116,14 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
     }
 
     @Override
-    public void onOpen(ISessionsStore store) {
-        store.listAllSubscriptions().stream().forEach(s -> {
-            // XXX SessionsStore does not store requestedQOS.
-            // defaults to QOSType.MOST_ONE at this time.
-            stats.subscribe(s.clientID, s.topicFilter, QOSType.MOST_ONE, false);
+    public void onOpen(List<Subscription> subscriptions) {
+        subscriptions.stream().forEach(s -> {
+            stats.subscribe(s.getClientId(), s.getTopicFilter(), s.getRequestedQos(), false);
         });
     }
 
     @Override
-    public void onClose(ISessionsStore store) {
+    public void onClose() {
         // Nothing to do
     }
 

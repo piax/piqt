@@ -14,16 +14,16 @@ package org.piqt;
 /**
  * Enables an application to be notified when asynchronous events related to the
  * client occur. Classes implementing this interface can be registered on both
- * types of client: {@link MqEngine#setCallback(MqttCallback)} and
- * {@link IMqttAsyncClient#setCallback(MqttCallback)}
+ * types of client: {@link MqEngine#setCallback(MqCallback)} and
+ * {@link MqEngine#setCallback(MqCallback)}
  */
 public interface MqCallback {
 
     /**
      * This method is called when a message arrives.
      *
-     * @param d
-     *            destination which message was published to.
+     * @param subscribedTopic
+     *            the subscribed topic filter which the message was received.
      * @param m
      *            message the actual message.
      * @throws Exception

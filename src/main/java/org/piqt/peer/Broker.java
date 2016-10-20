@@ -11,7 +11,7 @@
 package org.piqt.peer;
 
 import io.moquette.interception.InterceptHandler;
-//import io.moquette.server.Server;
+import io.moquette.server.Server;
 import io.moquette.server.config.ClasspathConfig;
 import io.moquette.server.config.IConfig;
 import io.moquette.server.config.MemoryConfig;
@@ -75,10 +75,11 @@ public class Broker {
             lh.add(observer);
             if (properties != null) {
                 IConfig config = new MemoryConfig(properties);
-                server.startServer(config, lh, observer);
+                server.startServer(config, lh);
             } else {
                 server.startServer(config);
             }
+            observer.onOpen(server.getSubscriptions());
         } catch (IOException e) {
             logger.error("MQTT Broker not started: " + engine);
             throw new MqException(e);

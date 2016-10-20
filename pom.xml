@@ -6,12 +6,8 @@
   <packaging>jar</packaging>
   <version>1.0.0-SNAPSHOT</version>
   <name>piqt</name>
-  <url>http://piqt.org</url>
+  <url>http://piqt.org/</url>
   <repositories>
-    <repository>
-      <id>local</id>
-      <url>file:local-repo</url>
-    </repository>
     <repository>
       <id>bintray</id>
       <url>http://dl.bintray.com/andsel/maven/</url>
@@ -28,19 +24,19 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <version>4.12</version>
       <scope>test</scope>
     </dependency>
     <!-- local dependencies -->
     <dependency>
-      <groupId>piax-gtrans</groupId>
+      <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>3.1.0-SNAPSHOT</version>
+      <version>3.1.0</version>
     </dependency>
     <dependency>
       <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
-      <version>0.9.0</version>
+      <version>0.8.0</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.ow2.asm/asm-all -->
     <dependency>
@@ -151,6 +147,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+        <version>3.0.2</version>
         <configuration>
           <archive>
             <manifest>
