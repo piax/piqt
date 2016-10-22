@@ -74,37 +74,31 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                 // find the nearest engine.
                 LowerUpper dst = new LowerUpper(range, false, 1);
                 qs[i] = o
-                        .request(dst, (Object) new DelegatorCommand("find"),
+                        .request(dst, (Object) new DelegatorCommand("find", topics[i]),
                                 new TransOptions(ResponseType.DIRECT,
                                         qos == 0 ? RetransMode.NONE
                                                 : RetransMode.FAST));
+                // this can return the previous neighbor topic.
+                // ex.if t1.id2 and t2.id4 are joined,
+                // a query from t2.id3 matches to t1.id2.
+                // then, we need to forward it to the next neighbor tobic (TODO).
+                // the current implementation just ignore it.
             }
-            FutureQueue<?>[] empties = new FutureQueue<?>[topics.length];
             for (int i = 0; i < qs.length; i++) {
                 if (qs[i] != null) {
-                    if (qs[i].isEmpty()) { // skip
+                    if (qs[i].isEmpty()) { // no response.
                         logger.debug("empty queue for {}", topics[i]);
-                        empties[i] = qs[i];
                         continue;
                     }
                     for (RemoteValue<?> rv : qs[i]) {
                         Endpoint e = (Endpoint) rv.getValue();
-                        ds[i] = new TopicDelegator(e, topics[i]);
-                        logger.debug("delegator for {} : {}", topics[i],
-                                rv.getValue());
-                    }
-                } else {
-                    logger.debug("response for {} was null.", topics[i]);
-                }
-            }
-            // empties
-            for (int i = 0; i < empties.length; i++) {
-                if (empties[i] != null) {
-                    for (RemoteValue<?> rv : empties[i]) {
-                        Endpoint e = (Endpoint) rv.getValue();
-                        ds[i] = new TopicDelegator(e, topics[i]);
-                        logger.debug("delegator for {} : {}", topics[i],
-                                rv.getValue());
+                        if (e != null) {
+                            ds[i] = new TopicDelegator(e, topics[i]);
+                            logger.debug("delegator for {} : {}", topics[i], rv.getValue());
+                        }
+                        else {
+                            logger.debug("delegator not matched for {}", topics[i]);
+                        }
                     }
                 } else {
                     logger.debug("response for {} was null.", topics[i]);
@@ -185,20 +179,32 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
         delegators = engine.getDelegators(topic);
         if (delegators == null) {
             delegators = findDelegators(engine, pStrs, qos);
-            engine.foundDelegators(m.getTopic(), delegators);
+            boolean found = false;
+            for (int i = 0; i < delegators.length; i++) {
+                if (delegators[i] != null) {
+                    found = true;
+                }
+            }
+            if (found) {
+                engine.foundDelegators(m.getTopic(), delegators);
+                for (TopicDelegator d : delegators) {
+                    if (d != null) {
+                        logger.debug("delegate: endpoint={}, topic={}, m={}",
+                                d.endpoint, d.topic, m);
+                        ;
+                        engine.delegate(this, d.endpoint, d.topic, m);
+                    }
+                }
+            }
+            else {
+                // fall back.
+                startDeliveryEach(engine);
+            }
         } else {
             resetDelegators(delegators);
         }
-        logger.debug("delegate: m={}", m);
-        ;
-        for (TopicDelegator d : delegators) {
-            if (d != null) {
-                logger.debug("delegate: endpoint={}, topic={}, m={}",
-                        d.endpoint, d.topic, m);
-                ;
-                engine.delegate(this, d.endpoint, d.topic, m);
-            }
-        }
+        
+        
         /*
          * if (aListener != null) { aListener.onSuccess(this); }
          * synchronized(this) { if (isWaiting) { notify(); } } if (c != null) {

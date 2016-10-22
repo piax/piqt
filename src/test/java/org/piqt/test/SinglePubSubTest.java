@@ -15,8 +15,11 @@ import io.moquette.server.config.ClasspathConfig;
 import io.moquette.server.config.IConfig;
 
 import java.net.InetSocketAddress;
+import java.util.Properties;
 
 import org.junit.Test;
+import static org.junit.Assert.assertTrue;
+
 import org.piax.common.Destination;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
@@ -60,9 +63,20 @@ public class SinglePubSubTest {
         // PeerMqDeliveryToken.USE_DELEGATE = false;
         // System.out.println("--- NO DELEGATE ---");
         // runTest2(0, 0);
-
+        count = 0;
+        PeerMqDeliveryToken.USE_DELEGATE = false;
+        //System.out.println("--- USE DELEGATE ---");
+        runTest2(0, 0);
+        count = 0;
+        numOfPeers = 2;
         PeerMqDeliveryToken.USE_DELEGATE = true;
-        System.out.println("--- USE DELEGATE ---");
+        //System.out.println("--- USE DELEGATE ---");
+        runTest2(0, 0);
+        
+        count = 0;
+        numOfPeers = 8;
+        PeerMqDeliveryToken.USE_DELEGATE = true;
+        //System.out.println("--- USE DELEGATE ---");
         runTest2(0, 0);
 
         // System.out.println("--- USE DELEGATE ---");
@@ -91,12 +105,10 @@ public class SinglePubSubTest {
         System.out.println("Broker stopped");
     }
 
-    @SuppressWarnings("unchecked")
     public void runTest2(int qos, int failureLevel) throws Exception {
         Peer p[] = new Peer[numOfPeers];
         PeerMqEngine e[] = new PeerMqEngine[numOfPeers];
-        EvalTransport<UdpLocator> c[] = new EvalTransport[numOfPeers];
-        Suzaku<Destination, LATKey> szk[] = new Suzaku[numOfPeers];
+        
         NodeMonitor.PING_TIMEOUT = 1000000; // to test the retrans without ddll
                                             // fix
 
@@ -110,13 +122,7 @@ public class SinglePubSubTest {
         MessagingFramework.ACK_TIMEOUT_THRES = 2000;
         MessagingFramework.ACK_TIMEOUT_TIMER = MessagingFramework.ACK_TIMEOUT_THRES + 50;
 
-        // FailureSimulationChannelTransport fs[] = new
-        // FailureSimulationChannelTransport[numOfPeers];
         int port = startPort;
-
-        PeerLocator loc = new UdpLocator(new InetSocketAddress("localhost",
-                port++));
-
         for (int i = 0; i < numOfPeers; i++) {
             p[i] = Peer.getInstance(new PeerId("p" + i));
             ClusterId cid;
@@ -127,53 +133,37 @@ public class SinglePubSubTest {
             } else {
                 cid = new ClusterId("jp.isp1.dc3");
             }
-
-            // szk[i] = new Suzaku<Destination, LATKey>(
-            // fs[i] = new FailureSimulationChannelTransport<UdpLocator>(
-            // c[i] = new EvalTransport<UdpLocator>(
-            // p[i].newBaseChannelTransport((UdpLocator)((i == 0) ? loc : new
-            // UdpLocator(new InetSocketAddress("localhost", port++))))
-            // , cid)));
-
-            e[i] = new PeerMqEngineMoquette("localhost", port++, null);
+            int myPort = port;
+            Properties properties = new Properties();
+            properties.setProperty("host", "localhost");
+            properties.setProperty("port", String.valueOf(++port)); // 12361
+            e[i] = new PeerMqEngineMoquette("localhost", myPort, properties); // 12360
+            port++; // 12362
             e[i].setSeed("localhost", startPort);
             e[i].setClusterId(cid.toString());
             e[i].setCallback(new MqCallback() {
                 @Override
                 public void messageArrived(MqTopic subscribedTopic, MqMessage m)
                         throws Exception {
-                    System.out.println("@@@ messageArrived: "
-                            + Thread.currentThread());
-                    byte[] body = m.getPayload();
-                    String msg = new String(body, "UTF-8");
-                    System.out.println("time="
-                            + (System.currentTimeMillis() - Long
-                                    .parseLong(new String(body))) + " msg="
-                            + msg);
                     countUp();
                 }
 
                 @Override
                 public void deliveryComplete(MqDeliveryToken token) {
-                    System.out.println("@@@ deliveryComplete: "
-                            + Thread.currentThread());
                 }
             });
             e[i].connect();
-            System.out.println("e" + i + " " + cid);
-            // Thread.sleep(100);
         }
 
-        //        System.out.println("--------- WAIT std in------------");
-        //        System.in.read();
-
-        System.out.println("running fin");
+        e[1].subscribe("sport/tennis/+");
+        Thread.sleep(100);
+        e[0].publish("sport/tennis/player1", String.valueOf(e[0].getPort()).getBytes(), qos);
 
         for (int i = 0; i < numOfPeers; i++) {
             e[i].disconnect();
             e[i].fin();
         }
-        System.out.println("end.");
+        assertTrue(count == 1);
     }
 
     @SuppressWarnings("unchecked")

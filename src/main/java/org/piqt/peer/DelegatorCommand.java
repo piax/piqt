@@ -17,8 +17,10 @@ public class DelegatorCommand implements Serializable {
 	 */
     private static final long serialVersionUID = -8118232028344200034L;
     public String command;
+    public String topic;
 
-    public DelegatorCommand(String command) {
+    public DelegatorCommand(String command, String topic) {
         this.command = command;
+        this.topic = topic;
     }
 }
