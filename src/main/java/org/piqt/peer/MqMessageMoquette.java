@@ -19,17 +19,23 @@ public class MqMessageMoquette extends MqMessage {
 	 */
     private static final long serialVersionUID = -957783061937044610L;
     String peerId;
+    String clientId;
 
     public MqMessageMoquette(String topic) {
         super(topic);
     }
 
-    public MqMessageMoquette(String topic, String peerId) {
+    public MqMessageMoquette(String topic, String peerId, String clientId) {
         super(topic);
         this.peerId = peerId;
+        this.clientId = clientId;
     }
 
     public String getPeerId() {
         return peerId;
+    }
+    
+    public String getClientId() {
+        return clientId;
     }
 }

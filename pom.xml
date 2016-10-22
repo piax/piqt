@@ -6,10 +6,23 @@
   <packaging>jar</packaging>
   <version>1.0.0-SNAPSHOT</version>
   <name>piqt</name>
-  <url>http://piqt.org</url>
+  <url>http://piqt.org/</url>
+<!-- Enable this if original moquette has getSubscriptions API.
   <repositories>
     <repository>
-      <id>local</id>
+      <id>bintray</id>
+      <url>http://dl.bintray.com/andsel/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories> -->
+  <repositories>
+    <repository>
+      <id>local-repo</id>
       <url>file:local-repo</url>
     </repository>
   </repositories>
@@ -18,36 +31,33 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <version>4.12</version>
       <scope>test</scope>
     </dependency>
-    <!-- local dependencies -->
+    <!-- dl.bintray.com -->
     <dependency>
-      <groupId>piax-gtrans</groupId>
-      <artifactId>piax-gtrans</artifactId>
-      <version>3.1.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>moquette-broker</groupId>
+      <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
-      <version>PATCHED</version>
+      <version>0.9-SNAPSHOT</version>
     </dependency>
+    <!-- dl.bintray.com -->
     <dependency>
-      <groupId>moquette-netty-parser</groupId>
+      <groupId>io.moquette</groupId>
       <artifactId>moquette-netty-parser</artifactId>
-      <version>PATCHED</version>
+      <version>0.9-SNAPSHOT</version>
     </dependency>
+    <!-- hazelcast -->
     <dependency>
-      <groupId>moquette-parser-commons</groupId>
-      <artifactId>moquette-parser-commons</artifactId>
-      <version>PATCHED</version> 
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast</artifactId>
+      <version>3.5.4</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.ow2.asm/asm-all -->
+    <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans -->
     <dependency>
-      <groupId>org.ow2.asm</groupId>
-      <artifactId>asm-all</artifactId>
-      <version>5.1</version>
-    </dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans</artifactId>
+      <version>3.1.0</version>
+    </dependency>    
     <!-- https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api -->
     <dependency>
       <groupId>javax.ws.rs</groupId>
@@ -59,18 +69,6 @@
       <groupId>net.arnx</groupId>
       <artifactId>jsonic</artifactId>
       <version>1.3.10</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.21</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-jdk14 -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-jdk14</artifactId>
-      <version>1.7.21</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-server -->
     <dependency>
@@ -151,6 +149,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+        <version>3.0.2</version>
         <configuration>
           <archive>
             <manifest>

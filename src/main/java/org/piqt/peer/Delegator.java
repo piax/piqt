@@ -72,10 +72,13 @@ public class Delegator<E extends Endpoint> extends RPCInvoker<DelegatorIf, E>
                         mode);
                 break;
             }
+
             FutureQueue<?> fq = engine.getOverlay().request(
                     new KeyRange<LATKey>(new LATKey(LATopic.topicMin(topic)),
                             new LATKey(LATopic.topicMax(topic))), (Object) m,
                     mesOpts);
+            logger.debug("requested topic:" + topic + ", m=" + m + ",on " + engine.getHost() + ":" + engine.getPort());
+            
             d.delegated((Endpoint) trans.getEndpoint(), tokenId, topic);
 
             for (RemoteValue<?> rv : fq) {

@@ -1,44 +1,52 @@
 package org.piqt.peer;
 
-import java.io.UnsupportedEncodingException;
-import java.util.Set;
+import static org.piqt.peer.Util.newline;
+import static org.piqt.peer.Util.stackTraceStr;
+import io.moquette.interception.InterceptHandler;
+import io.moquette.interception.messages.InterceptAcknowledgedMessage;
+import io.moquette.interception.messages.InterceptConnectMessage;
+import io.moquette.interception.messages.InterceptDisconnectMessage;
+import io.moquette.interception.messages.InterceptPublishMessage;
+import io.moquette.interception.messages.InterceptSubscribeMessage;
+import io.moquette.interception.messages.InterceptUnsubscribeMessage;
+import io.moquette.parser.proto.messages.AbstractMessage.QOSType;
+import io.moquette.spi.impl.subscriptions.Subscription;
 
-import org.eclipse.moquette.interception.InterceptHandler;
-import org.eclipse.moquette.interception.messages.InterceptConnectMessage;
-import org.eclipse.moquette.interception.messages.InterceptDisconnectMessage;
-import org.eclipse.moquette.interception.messages.InterceptPublishMessage;
-import org.eclipse.moquette.interception.messages.InterceptSubscribeMessage;
-import org.eclipse.moquette.interception.messages.InterceptUnsubscribeMessage;
-import org.eclipse.moquette.spi.impl.ProtocolProcessor;
+import java.io.UnsupportedEncodingException;
+import java.util.List;
+
 import org.piqt.MqException;
+import org.piqt.MqMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.piqt.peer.Util.*;
-
-public class Observer implements InterceptHandler {
+public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(Observer.class
             .getPackage().getName());
 
     // PeerMqEngine engine;
     PeerMqEngineMoquette engine;
+    Statistics stats;
 
-    public Observer() {
+    public Observer(PeerMqEngineMoquette engine) {
         super();
         Thread th = Thread.currentThread();
         logger.debug("PeerMqObserver thread=" + th);
-        engine = Broker.getEngine();
+        this.engine = engine;
+        stats = new Statistics();
     }
 
     @Override
     public void onConnect(InterceptConnectMessage msg) {
         logger.info("clientID=" + msg.getClientID());
+        stats.up(msg.getClientID());
     }
 
     @Override
     public void onDisconnect(InterceptDisconnectMessage msg) {
         logger.info("clientID=" + msg.getClientID());
+        stats.down(msg.getClientID());
     }
 
     @Override
@@ -55,12 +63,12 @@ public class Observer implements InterceptHandler {
         }
         logger.debug("msg=" + payload);
         try {
-            engine.publish(msg.getTopicName(), byteArray, msg.getQos()
-                    .byteValue(), msg.isRetainFlag());
+            engine.publish(msg.getTopicName(), msg.getClientID(), byteArray, 
+                    msg.getQos().byteValue(), msg.isRetainFlag());
+            stats.publishedMessages++;
         } catch (MqException e) {
             logger.error("Failed to publish." + newline + stackTraceStr(e));
         }
-
     }
 
     @Override
@@ -68,30 +76,55 @@ public class Observer implements InterceptHandler {
         logger.info("topic=" + msg.getTopicFilter() + " qos="
                 + msg.getRequestedQos());
         try {
-            engine.subscribe(msg.getTopicFilter());
+            if (!engine.subscribedTo(msg.getTopicFilter())) { // only if the engine has not subscribed yet.
+                engine.subscribe(msg.getTopicFilter());
+            }
         } catch (MqException e) {
             logger.error("Failed to subscribe." + newline + stackTraceStr(e));
         }
+        stats.subscribe(msg.getClientID(), msg.getTopicFilter(), msg.getRequestedQos(), true);
     }
-
+    
     @Override
     public void onUnsubscribe(InterceptUnsubscribeMessage msg) {
         logger.info("topic=" + msg.getTopicFilter());
-        engine.unsubscribe(msg.getTopicFilter());
+        stats.unsubscribe(msg.getClientID(), msg.getTopicFilter());
+        if (!stats.subscribed(msg.getTopicFilter())) {
+            // no other client subscribed to the same topic.
+            engine.unsubscribe(msg.getTopicFilter());
+        }
+        
     }
 
     @Override
-    public void onDisconnect(InterceptDisconnectMessage msg,
-            Set<String> deletedTopics) {
-        logger.info("clientID=" + msg.getClientID());
-        engine.notifyDeletedTopics(deletedTopics);
-
+    public void onMessageAcknowledged(InterceptAcknowledgedMessage amsg) {
+        stats.transferedMessages++;
+    }
+    
+    public Statistics getStatistics() {
+        return stats;
     }
 
     @Override
-    public void onInit(ProtocolProcessor pp) {
-        logger.trace("onInit");
-        engine.notifyInit(pp);
+    public void onReceive(MqMessage msg) {
+        stats.receivedMessagesFromPIAX++;
+    }
+
+    @Override
+    public void onSend(MqMessage msg) {
+        // Nothing to do.
+    }
+
+    @Override
+    public void onOpen(List<Subscription> subscriptions) {
+        subscriptions.stream().forEach(s -> {
+            stats.subscribe(s.getClientId(), s.getTopicFilter(), s.getRequestedQos(), false);
+        });
+    }
+
+    @Override
+    public void onClose() {
+        // Nothing to do
     }
 
 }

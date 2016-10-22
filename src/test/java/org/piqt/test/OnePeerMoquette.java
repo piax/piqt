@@ -122,26 +122,10 @@ public class OnePeerMoquette implements Runnable {
         MessagingFramework.ACK_TIMEOUT_THRES = 2000;
         MessagingFramework.ACK_TIMEOUT_TIMER = MessagingFramework.ACK_TIMEOUT_THRES + 50;
 
-        int port = Integer.valueOf(prop.getProperty(KEY_PIAX_PORT));
-
-        PeerLocator loc = new UdpLocator(new InetSocketAddress(
-                prop.getProperty(KEY_PIAX_IP_ADDRESS), port));
-
-        p = Peer.getInstance(PeerId.newId());
-        ClusterId cid = new ClusterId(prop.getProperty(KEY_PIAX_DOMAIN_NAME));
         try {
-            c = new ThroughTransport<UdpLocator>(
-                    p.newBaseChannelTransport((UdpLocator) loc));
-            szk = new Suzaku<Destination, LATKey>(c);
-        } catch (IdConflictException e1) {
-            System.err.println("Error 1");
-            e1.printStackTrace();
-        } catch (IOException e1) {
-            System.err.println("Error 2");
-            e1.printStackTrace();
-        }
-        try {
-            e = new PeerMqEngineMoquette(szk, toMQTTProps());
+            e = new PeerMqEngineMoquette(prop.getProperty(KEY_PIAX_IP_ADDRESS),
+                    Integer.valueOf(prop.getProperty(KEY_PIAX_PORT)),
+                    toMQTTProps());
             // piax only
             // e = new PeerMqEngine(szk);
         } catch (MqException e1) {
@@ -150,33 +134,14 @@ public class OnePeerMoquette implements Runnable {
         }
         e.setSeed(prop.getProperty(KEY_PIAX_SEED_IP_ADDRESS),
                 Integer.valueOf(prop.getProperty(KEY_PIAX_SEED_PORT)));
-        e.setClusterId(cid.toString());
-        e.setCallback(new MqCallback() {
-            @Override
-            public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                    throws Exception {
-                System.out.print("@@@ OnePeerMoquette messageArrived: "
-                        + Thread.currentThread());
-                byte[] body = m.getPayload();
-                String msg = new String(body, "UTF-8");
-                System.out.println(" msg=" + msg);
-
-                e.write(m);
-            }
-
-            @Override
-            public void deliveryComplete(MqDeliveryToken token) {
-                System.out.println("@@@ OnePeerMoquette deliveryComplete: "
-                        + Thread.currentThread());
-            }
-        });
+        e.setClusterId("");
         try {
             e.connect();
         } catch (MqException e1) {
             System.err.println("Error 4");
             e1.printStackTrace();
         }
-        System.out.println(Thread.currentThread() + ":" + cid + " connected.");
+        System.out.println(Thread.currentThread() + ":" + e.getPeerId() + " connected.");
 
         szk.scheduleFingerTableUpdate(1000000, 5000);
 

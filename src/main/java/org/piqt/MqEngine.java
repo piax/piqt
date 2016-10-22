@@ -26,14 +26,10 @@ package org.piqt;
  */
 public interface MqEngine {
     /**
-     * Connects to the system using the default options.
-     * <p>
-     * The default options are specified in {@link MessagingOptions} class.
-     * </p>
-     *
+     * Connects to the system.
+     * 
      * @throws MqException
      *             for some problems
-     * @see #connect(MessagingOptions)
      */
     void connect() throws MqException;
 
@@ -43,10 +39,9 @@ public interface MqEngine {
      * An attempt is made to quiesce the client allowing outstanding work to
      * complete before disconnecting. It will wait for a maximum of 30 seconds
      * for work to quiesce before disconnecting. This method must not be called
-     * from inside {@link MqttCallback} methods.
+     * from inside {@link MqCallback} methods.
      * </p>
      *
-     * @see #disconnect(long)
      */
     void disconnect() throws MqException;
 
@@ -55,9 +50,9 @@ public interface MqEngine {
      *
      * @see #subscribe(String[], int[])
      *
-     * @param topicFilter
+     * @param topic
      *            the topic to subscribe to, which can include wildcards.
-     * @throws MqttException
+     * @throws MqException
      *             if there was an error registering the subscription.
      */
     void subscribe(String topic) throws MqException;
@@ -68,9 +63,9 @@ public interface MqEngine {
      *
      * @see #subscribe(String[], int[])
      *
-     * @param topicFilters
-     *            the topic to subscribe to, which can include wildcards.
-     * @throws MqttException
+     * @param topics
+     *            an array of topics to subscribe to, which can include wildcards.
+     * @throws MqException
      *             if there was an error registering the subscription.
      */
     void subscribe(String[] topics) throws MqException;
@@ -78,7 +73,7 @@ public interface MqEngine {
     /**
      * Subscribes to multiple topics, each of which may include wildcards.
      * <p>
-     * The {@link #setCallback(MqttCallback)} method should be called before
+     * The {@link #setCallback(MqCallback)} method should be called before
      * this method, otherwise any received messages will be discarded.
      * </p>
      * <p>
@@ -179,7 +174,7 @@ public interface MqEngine {
      * This is a blocking method that returns once subscribe completes
      * </p>
      *
-     * @param topicFilters
+     * @param topics
      *            one or more topics to subscribe to, which can include
      *            wildcards.
      * @param qos
@@ -203,10 +198,10 @@ public interface MqEngine {
      * Requests the server unsubscribe the client from a topic.
      *
      * @see #unsubscribe(String[])
-     * @param topicFilter
+     * @param topic
      *            the topic to unsubscribe from. It must match a topicFilter
      *            specified on the subscribe.
-     * @throws MqttException
+     * @throws MqException
      *             if there was an error unregistering the subscription.
      */
     void unsubscribe(String topic) throws MqException;
@@ -228,10 +223,10 @@ public interface MqEngine {
      * This is a blocking method that returns once unsubscribe completes
      * </p>
      *
-     * @param topicFilters
+     * @param topics
      *            one or more topics to unsubscribe from. Each topicFilter must
      *            match one specified on a subscribe
-     * @throws MqttException
+     * @throws MqException
      *             if there was an error unregistering the subscription.
      */
     void unsubscribe(String[] topics) throws MqException;
@@ -255,7 +250,6 @@ public interface MqEngine {
      * @throws MqException
      *             for errors encountered while publishing the message. For
      *             instance client not connected.
-     * @see #publish(String, MqMessage)
      * @see MqMessage#setQos(int)
      * @see MqMessage#setRetained(boolean)
      */
@@ -282,12 +276,9 @@ public interface MqEngine {
      * possible to determine when the delivery of the message completes. Prior
      * to re-establishing the connection to the server:
      * <ul>
-     * <li>Register a {@link #setCallback(MqttCallback)} callback on the client
+     * <li>Register a {@link #setCallback(MqCallback)} callback on the client
      * and the delivery complete callback will be notified once a delivery of a
-     * message completes
-     * <li>or call {@link #getPendingDeliveryTokens()} which will return a token
-     * for each message that is in-flight. The token can be used to wait for
-     * delivery to complete.
+     * message completes.
      * </ul>
      * </p>
      *
@@ -328,7 +319,7 @@ public interface MqEngine {
      * </p>
      * *
      *
-     * @param message
+     * @param m
      *            to delivery to the server
      * @throws MqException
      *             for errors encountered while publishing the message. For
@@ -351,11 +342,11 @@ public interface MqEngine {
      * </p>
      * <p>
      * Other events that track the progress of an individual operation such as
-     * connect and subscribe can be tracked using the {@link MqttToken} passed
+     * connect and subscribe can be tracked using the {@link MqToken} passed
      * to the operation
      * <p>
      * 
-     * @see MqttCallback
+     * @see MqCallback
      * @param callback
      *            the class to callback when for events related to the client
      */
@@ -373,7 +364,7 @@ public interface MqEngine {
      * After the engine has been finalized, it cannot be reused. For instance,
      * attempts to join will fail.
      * 
-     * @throws MqttException
+     * @throws MqException
      *             if the engine is not disconnected.
      */
     void fin() throws MqException;

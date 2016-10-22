@@ -29,8 +29,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.InetSocketAddress;
 import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.Date;
@@ -46,21 +44,7 @@ import net.arnx.jsonic.JSON;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.webapp.WebAppContext;
-import org.piax.common.Destination;
-import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.szk.Suzaku;
-import org.piax.gtrans.raw.udp.UdpLocator;
-import org.piqt.MqCallback;
-import org.piqt.MqDeliveryToken;
 import org.piqt.MqException;
-import org.piqt.MqMessage;
-import org.piqt.MqTopic;
-import org.piqt.peer.ClusterId;
-import org.piqt.peer.LATKey;
 import org.piqt.peer.PeerMqDeliveryToken;
 import org.piqt.peer.PeerMqEngineMoquette;
 import org.slf4j.Logger;
@@ -83,13 +67,7 @@ public class Launcher {
 
     Server server;
     MqttPiaxConfig config;
-
-    PeerLocator loc;
-    Peer peer;
     PeerMqEngineMoquette e;
-    ChannelTransport<UdpLocator> c;
-    ClusterId cid;
-    Suzaku<Destination, LATKey> szk;
 
     long startDate;
 
@@ -162,18 +140,6 @@ public class Launcher {
             MqttOnPiaxApp.configuration.setProperty(KEY_PIAX_DOMAIN_NAME,
                     domain);
         }
-/*            FileOutputStream os;
-            File conf = configFile();
-            try {
-                os = new FileOutputStream(conf);
-                MqttOnPiaxApp.configuration.store(os, "update props");
-                os.close();
-            } catch (IOException e1) {
-                String msg = "Failed to store config in " + conf.getPath() + ".";
-                String detail = stackTraceStr(e1);
-                logger.error(msg + newline + detail);
-            }
-        }*/
     }
     
     private File configFile() {
@@ -199,14 +165,6 @@ public class Launcher {
         }
 
         checkDomain();
-        /*try {
-            setLogger();
-        } catch (SecurityException | IOException e1) {
-            String msg = "Failed to setLogger().";
-            String detail = stackTraceStr(e1);
-            logger.error(msg + newline + detail);
-            System.exit(1);
-        }*/
 
         server = new Server();
         ServerConnector http = new ServerConnector(server);
@@ -250,11 +208,6 @@ public class Launcher {
 
         startDate = 0;
 
-        loc = null;
-        peer = null;
-        cid = null;
-        c = null;
-        szk = null;
         e = null;
 
         if (config.get(KEY_AUTO_START).equals("yes")) {
@@ -265,20 +218,6 @@ public class Launcher {
         }
     }
 
-    private void fin() {
-        if (szk != null) {
-            szk.fin();
-            szk = null;
-        }
-        if (c != null) {
-            c.fin();
-            c = null;
-        }
-        if (peer != null) {
-            peer.fin();
-            peer = null;
-        }
-    }
 /*
     private String getHostName() {
         try {
@@ -351,7 +290,7 @@ public class Launcher {
             logger.error(msg);
             return buildResponse(response.NG, msg, null);
         }
-
+/*
         try {
             loc = new UdpLocator(new InetSocketAddress(pip, pport));
             peer = Peer.getInstance(PeerId.newId());
@@ -383,11 +322,11 @@ public class Launcher {
             return buildResponse(response.NG, msg, detail);
         }
         startLog += "Suzaku/";
-
+*/
         try {
-            e = new PeerMqEngineMoquette(szk, config.toMQTTProps());
+//            e = new PeerMqEngineMoquette(szk, config.toMQTTProps());
+            e = new PeerMqEngineMoquette(pip, pport, config.toMQTTProps());
         } catch (IOException | MqException e1) {
-            fin();
             msg = startLog + "Failed to start moquette.";
             String detail = stackTraceStr(e1);
             logger.error(msg + newline + detail);
@@ -395,41 +334,17 @@ public class Launcher {
         }
         startLog += "MqEngine";
         e.setSeed(sip, sport);
-        e.setClusterId(cid.toString());
-        e.setCallback(new MqCallback() {
-            @Override
-            public void deliveryComplete(MqDeliveryToken arg0) {
-                logger.debug("Launcher deliveryComplete: topic="
-                        + arg0.getTopics());
-            }
-
-            @Override
-            public void messageArrived(MqTopic t, MqMessage m) {
-                byte[] body = m.getPayload();
-                String msg = null;
-                try {
-                    msg = new String(body, "UTF-8");
-                } catch (UnsupportedEncodingException e1) {
-                    String msg2 = "Exception caused by debugging codes.";
-                    String detail = stackTraceStr(e1);
-                    logger.debug(msg2 + newline + detail);
-                }
-                logger.debug("Launcher messageArrived: topic=" + m.getTopic()
-                        + " msg=" + msg);
-                e.write(m);
-            }
-        });
+        e.setClusterId(pcid);
         try {
             e.connect();
         } catch (MqException e1) {
-            e = null;
-            fin();
+            e.fin();
             msg = startLog + "peer failed to join().";
             String detail = stackTraceStr(e1);
             logger.error(msg + newline + detail);
             return buildResponse(response.NG, msg, detail);
         }
-        startLog += "(pid=" + peer.getPeerId() + "," + " cid=" + (cid.isZeroLength()? "default" : cid)
+        startLog += "(pid=" + e.getPeerId() + "," + " cid=" + (e.getClusterId().isZeroLength()? "default" : e.getClusterId())
                 + ") started.";
         startDate = new Date().getTime();
         logger.info(startLog);
@@ -448,8 +363,7 @@ public class Launcher {
         try {
             if (e != null) {
                 e.disconnect();
-                e = null;
-                fin();
+                e.fin();
             } else {
                 return buildResponse(response.OK, "MQTT already stopped.", "");
             }

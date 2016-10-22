@@ -78,6 +78,8 @@ public class PeerMqEngine implements MqEngine,
     public PeerMqEngine(String host, int port) throws MqException {
         subscribes = new ArrayList<MqTopic>();
         joinedKeys = new ArrayList<LATKey>();
+        this.host = host;
+        this.port = port;
         peer = Peer.getInstance(pid = PeerId.newId());
         try {
             o = new Suzaku<Destination, LATKey>(
@@ -99,6 +101,14 @@ public class PeerMqEngine implements MqEngine,
         tokens.put(token.seqNo, token);
         dif.delegate(o.getLowerTransport().getEndpoint(), token.seqNo, topic,
                 message);
+    }
+    
+    public int getPort() {
+        return port;
+    }
+    
+    public String getHost() {
+        return host;
     }
 
     public void foundDelegators(String topic, TopicDelegator[] delegators) {
@@ -234,7 +244,7 @@ public class PeerMqEngine implements MqEngine,
     }
 
     @Override
-    public void fin() throws MqException {
+    public void fin() {
         peer.fin();
     }
 
@@ -316,12 +326,22 @@ public class PeerMqEngine implements MqEngine,
     @Override
     public FutureQueue<?> onReceiveRequest(Overlay<Destination, LATKey> ov,
             OverlayReceivedMessage<LATKey> rmsg) {
-        logger.debug("onReceiveRequest on Overlay: overlay={} rmsg={}", ov,
-                rmsg);
+        logger.debug("onReceiveRequest on Overlay: overlay={} rmsg={} keys={}", ov,
+                rmsg, o.getKeys());
 
         Object msg = rmsg.getMessage();
-        if (msg instanceof DelegatorCommand) {
-            logger.debug(o.getEndpoint() + ":" + getClusterId());
+        if (msg instanceof DelegatorCommand) {// requested by findDelegators.
+            DelegatorCommand com = (DelegatorCommand) msg;
+            String searchTopic = com.topic;
+            boolean noMatch = true;
+            for (LATKey key : rmsg.getMatchedKeys()) {
+                if (searchTopic.equals(key.getKey().topic)) {
+                    noMatch = false;
+                }
+            }
+            if (noMatch) {
+                return ov.singletonFutureQueue(null); // the topic did not match. null return. 
+            }
             return ov.singletonFutureQueue(o.getLowerTransport().getEndpoint());
         }
 

@@ -25,15 +25,15 @@
 	  <tr><th>Item</th><th>Status</th></tr>
 	  <tr><td>Uptime</td>
 		<td><div id="uptime"></div></td></tr>
-	  <tr><td>Transfer Messages</td>
+<!--	  <tr><td>Transfer Messages</td>
 		<td><div id="transferedMessages"></div></td></tr>
 	  <tr><td>Storing Messages</td>
-		<td><div id="storedMessages"></div></td></tr>
-	  <tr><td>Storing Topics</td>
+		<td><div id="storedMessages"></div></td></tr> -->
+	  <tr><td>Number of topics</td>
 		<td><div id="storedTopics"></div></td></tr>
-	  <tr><td>Published Messages</td>
+	  <tr><td>Number of published messages</td>
 		<td><div id="publishedMessages"></div></td></tr>
-	  <tr><td>Received Messages from P2P</td>
+	  <tr><td>Number of received messages from P2P</td>
 		<td><div id="receivedMessagesFromP2P"></div></td></tr>
 	</table>
 
@@ -406,11 +406,11 @@
 			console.log("update SUCCESS");
 			console.log(data);
 			if (data != undefined) {
-				$('#storedMessages').text(data.storedMessages);
+//				$('#storedMessages').text(data.storedMessages);
 				$('#storedTopics').text(data.storedTopics);
-				$('#transferedMessages').text(data.transferedMessages);
+//				$('#transferedMessages').text(data.transferedMessages);
 				$('#publishedMessages').text(data.publishedMessages);
-				$('#receivedMessagesFromPIAX').text(data.receivedMessagesFromPIAX);
+				$('#receivedMessagesFromP2P').text(data.receivedMessagesFromPIAX);
 //				$('#connections').DataTable({
 //					data: data.clients,
 //					columns:[ { data: 'clientID'}, {data: 'subscriptions'} ]
@@ -424,9 +424,13 @@
 							return -1;
 					});
 				for (var i in data.clients) {
+                                        var subString = "";
+                                        for (var j in data.clients[i].subscriptions) {
+                                                subString += data.clients[i].subscriptions[j]["topicFilter"] + " ";
+                                        }
 					$('<tr><td>' + data.clients[i].clientID + '</td><td>' +
 	 				data.clients[i].isActive + '</td><td>' +
-					data.clients[i].subscriptions + '</td></tr>')
+					subString + '</td></tr>')
 					.appendTo('#connections')
 				}
 			}

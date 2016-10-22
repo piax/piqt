@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
-  <groupId>moquette-broker</groupId>
+  <groupId>io.moquette</groupId>
   <artifactId>moquette-broker</artifactId>
   <versioning>
-    <release>PATCHED</release>
     <versions>
-      <version>PATCHED</version>
+      <version>0.9-SNAPSHOT</version>
     </versions>
-    <lastUpdated>20160819024948</lastUpdated>
+    <lastUpdated>20161020075211</lastUpdated>
   </versioning>
 </metadata>

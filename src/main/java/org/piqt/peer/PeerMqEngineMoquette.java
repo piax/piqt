@@ -10,44 +10,67 @@
  */
 package org.piqt.peer;
 
+import static org.piqt.peer.Util.newline;
+import static org.piqt.peer.Util.stackTraceStr;
+import io.moquette.parser.proto.messages.AbstractMessage;
+import io.moquette.parser.proto.messages.PublishMessage;
+import io.moquette.spi.impl.ProtocolProcessor;
+
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 
-import org.eclipse.moquette.proto.messages.PublishMessage;
-import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
-import org.eclipse.moquette.spi.impl.ProtocolProcessor;
-import org.eclipse.moquette.spi.impl.Statistics;
-import org.piax.common.Destination;
-import org.piax.common.PeerId;
-import org.piax.gtrans.ov.Overlay;
+import org.piqt.MqCallback;
+import org.piqt.MqDeliveryToken;
 import org.piqt.MqException;
 import org.piqt.MqMessage;
 import org.piqt.MqTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.arnx.jsonic.JSON;
-import static org.piqt.peer.Util.*;
-
 public class PeerMqEngineMoquette extends PeerMqEngine {
     private static final Logger logger = LoggerFactory
             .getLogger(PeerMqEngineMoquette.class.getPackage().getName());
     Broker moquette;
     ProtocolProcessor pp;
-    PeerId peerId;
-    long receviedMessagesFromPIAX;
+    //PeerId peerId;
+    Observer observer;
     
-    static public String PEER_CLIENT_ID = "mqttpiax"; // XXX it is embedded in modified moquette.
+    static public String PEER_CLIENT_ID = "piqt";
 
-    public PeerMqEngineMoquette(Overlay<Destination, LATKey> overlay,
+    public PeerMqEngineMoquette(String host, int port,
             Properties config) throws MqException {
-        super(overlay);
+        super(host, port);
         moquette = new Broker(this, config);
-        peerId = overlay.getPeerId();
-        receviedMessagesFromPIAX = 0;
+        //peerId = overlay.getPeerId();
+        observer = new Observer(this);
+        
+        setCallback(new MqCallback() {
+            @Override
+            public void deliveryComplete(MqDeliveryToken arg0) {
+                logger.debug("Launcher deliveryComplete: topic="
+                        + arg0.getTopics());
+            }
+
+            @Override
+            public void messageArrived(MqTopic t, MqMessage m) {
+                byte[] body = m.getPayload();
+                String msg = null;
+                try {
+                    msg = new String(body, "UTF-8");
+                } catch (UnsupportedEncodingException e1) {
+                    String msg2 = "Exception caused by debugging codes.";
+                    String detail = stackTraceStr(e1);
+                    logger.debug(msg2 + newline + detail);
+                }
+                logger.debug("Launcher messageArrived: topic=" + m.getTopic()
+                        + " msg=" + msg);
+                write(m);
+            }
+        });
     }
 
     public PeerMqEngineMoquette(String host, int port) throws MqException {
@@ -57,7 +80,6 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
         properties.setProperty("host", host);
         properties.setProperty("port", String.valueOf(port));
         moquette = new Broker(this, properties);
-        receviedMessagesFromPIAX = 0;
     }
 
     boolean moquette_started = false;
@@ -65,7 +87,7 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
     public void connect() throws MqException {
         super.connect();
         try {
-            moquette.start();
+            moquette.start(observer);
         } catch (Exception e) {
             super.disconnect();
             throw new MqException(e);
@@ -81,31 +103,35 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
         }
     }
 
-    public void publish(String topic, byte[] payload, int qos, boolean retain)
+    public void publish(String topic, String clientId, byte[] payload, int qos, boolean retain)
             throws MqException {
-        MqMessage m = new MqMessageMoquette(topic, peerId.toString());
+        MqMessage m = new MqMessageMoquette(topic, peer.getPeerId().toString(), clientId);
         m.setPayload(payload);
         m.setQos(qos);
         m.setRetained(retain);
         publish(m);
     }
 
-    // callbackから呼び出される。callbackの設定は、Launcherで行っている。
     public void write(MqMessage m) {
+        String c = null;
         if (m instanceof MqMessageMoquette) {
-            String p = ((MqMessageMoquette) m).getPeerId();
-            if (p.equals(peerId.toString())) {
+            MqMessageMoquette msg = (MqMessageMoquette) m;
+            c = msg.getClientId();
+            if (msg.getPeerId().equals(peer.getPeerId())) {
                 return;
             }
         }
-        PublishMessage msg = new PublishMessage();
-        msg.setRetainFlag(m.isRetained());
-        msg.setTopicName(m.getTopic());
-        msg.setQos(QOSType.valueOf((byte) m.getQos()));
-        msg.setPayload(ByteBuffer.wrap(m.getPayload()));
-        msg.setMessageID(pp.getNextPacketID(PEER_CLIENT_ID));
-        pp.executePublish(PEER_CLIENT_ID, msg);
-        receviedMessagesFromPIAX++;
+        if (c != null) {
+            PublishMessage msg = new PublishMessage();
+            msg.setRetainFlag(m.isRetained());
+            msg.setTopicName(m.getTopic());
+            msg.setQos(AbstractMessage.QOSType.valueOf((byte) m.getQos()));
+            msg.setPayload(ByteBuffer.wrap(m.getPayload()));
+            msg.setLocal(false);
+            msg.setClientId(c);
+            moquette.server.internalPublish(msg);
+            observer.onReceive(m);
+        }
     }
 
     public void unsubscribe(String topic) {
@@ -167,17 +193,8 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
     }
 
     public String getStatistics() {
-        if (pp == null)
-            return null;
-        else {
-            Statistics stat = pp.getStatistics();
-            stat.receivedMessagesFromPIAX = receviedMessagesFromPIAX;
-            return JSON.encode(stat);
-        }
-    }
-
-    public void notifyInit(ProtocolProcessor pp) {
-        this.pp = pp;
+        Statistics stat = observer.getStatistics();
+        return stat.dump();
     }
 
 }

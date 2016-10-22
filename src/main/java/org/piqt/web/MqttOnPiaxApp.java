@@ -24,11 +24,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
+import net.arnx.jsonic.JSON;
+
 import org.piqt.peer.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.arnx.jsonic.JSON;
 
 @Path("/")
 public class MqttOnPiaxApp {

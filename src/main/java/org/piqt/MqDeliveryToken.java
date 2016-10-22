@@ -17,14 +17,6 @@ package org.piqt;
  * tracked. Unlike instances of MessageToken delivery tokens can be used across
  * connection and client restarts. This enables the delivery of a messages to be
  * tracked after failures. There are two approaches
- * <ul>
- * <li>A list of delivery tokens for in-flight messages can be obtained using
- * {@link Messaging#getPendingDeliveryTokens()}. The waitForCompletion method
- * can then be used to block until the delivery is complete.
- * <li>A {@link MqttCallback} can be set on the client. Once a message has been
- * delivered the {@link MessageCallback#deliveryComplete(MessageDeliveryToken)}
- * method will be called with delivery token being passed as a parameter.
- * </ul>
  * <p>
  * An action is in progress until either:
  * <ul>
@@ -50,8 +42,6 @@ public interface MqDeliveryToken extends MqToken {
      * 
      * @return the message associated with this token or null if already
      *         delivered.
-     * @throws MqException
-     *             if there was a problem completing retrieving the message
      */
     public MqMessage getMessage();
 }
