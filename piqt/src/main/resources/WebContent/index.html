@@ -1,0 +1,572 @@
+<html lang="ja">
+  <head>
+    <meta http-equiv="Content-Language" content="ja">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Style-Type" content="text/css">
+
+    <title>PIQT Configuration</title>
+    <link rel="stylesheet" href="mystyle.css" type="text/css">
+
+	<script src="jquery-1.11.3.min.js"></script>
+	<script src="jquery.validate.min.js"></script>
+	<script src="sha256.min.js"></script>
+	<!--
+	<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.10/css/jquery.dataTables.css">
+	<script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.10/js/jquery.dataTables.js"></script>
+	-->
+  </head>
+  <body>
+<h1><img src="piqt.png" width="40"></h1>	
+	<h1>PIQT Configuration</h1>
+	
+	<h2>Status</h2>
+
+	<table>
+	  <tr><th>Item</th><th>Status</th></tr>
+	  <tr><td>Uptime</td>
+		<td><div id="uptime"></div></td></tr>
+<!--	  <tr><td>Transfer Messages</td>
+		<td><div id="transferedMessages"></div></td></tr>
+	  <tr><td>Storing Messages</td>
+		<td><div id="storedMessages"></div></td></tr> -->
+	  <tr><td>Number of topics</td>
+		<td><div id="storedTopics"></div></td></tr>
+	  <tr><td>Number of published messages</td>
+		<td><div id="publishedMessages"></div></td></tr>
+	  <tr><td>Number of received messages from P2P</td>
+		<td><div id="receivedMessagesFromP2P"></div></td></tr>
+	</table>
+
+	<h3>Storing Connections</h3>
+
+	<table>
+	  <tbody id="connections"></tbody>
+	</table>
+
+	<h3>Information</h3>
+	<div id="info_area">	  
+	  <div id="info"></div>
+  	  <div id="info_detail"></div>
+	  <input type="button" id="show_detail" name="show_detail" value="More...">
+	</div>
+
+	<h2>Settings</h2>
+
+	<form id="setting_form" method="post" action="api/saveConfig">
+	  <h3>P2P</h3>
+	  <table>
+		<tr><th>name</th><th>value</th></tr>
+
+		<tr><td>seed address<span>*</span></td>
+		  <td><input type="text" id="piax_seed_ip_address" name="piax_seed_ip_address" placeholder="localhost" class="settings"/></td>
+		</tr>
+		
+		<tr><td>seed port number<span>*</span></td>
+		  <td><input type="text" id="piax_seed_port" name="piax_seed_port" value=""  placeholder="12367" class="settings"/></td>
+		</tr>
+
+		<tr><td>bind address<span>*</span></td>
+		  <td><div><input type="text" id="piax_ip_address" name="piax_ip_address" placeholder="localhost" value="" class="settings" />
+			<select id="piax_ip_address_candidate" name="piax_ip_address_candidate" class="min_candidate" /></div>
+		  </td>
+		</tr>
+		<tr><td>port number<span>*</span></td>
+		  <td><input type="text" id="piax_port" name="piax_port" placeholder="12367" class="settings" /></td>
+		</tr>
+		
+<!--		<tr><td>peer ID <span>*</span></td>
+		  <td><input type="text" id="piax_peer_id" name="piax_peer_id" placeholder="p1" class="settings" /></td>
+		</tr> -->
+		
+		<tr><td>cluster ID</td>
+		  <td><input type="text" id="piax_domain_name" name="piax_domain_name" placeholder="cluster.provider.japan" class="settings" /></td>
+		</tr>
+	  </table>
+
+	  <h3>MQTT</h3>
+	  <table>
+		<tr><td>bind address <span>*</span></td>
+		  <td>
+			<div><input type="text" id="mqtt_bind_address" name="mqtt_bind_address" placeholder="localhost" class="settings" />
+			<select id="mqtt_bind_address_candidate" name="mqtt_bind_address_candidate" class="min_candidate" /></div>
+			</td>
+		</tr>
+
+		<tr><td>port number<span>*</span></td>
+		  <td><input type="text" id="mqtt_port" name="mqtt_port" placeholder="1883" class="settings" /></td>
+		</tr>
+		
+		<tr><td>allow anonymous</td>
+		  <td>
+		    <input type="radio" id="mqtt_allow_anonymous_true"  name="mqtt_allow_anonymous" value="true" class="settings">True
+		    <input type="radio" id="mqtt_allow_anonymous_false" name="mqtt_allow_anonymous" value="false" class="settings" checked>False
+		  </td>
+		</tr>
+	
+	<tr><td>ACL</td>
+		  <td height="100"><textarea id="mqtt_acl" name="mqtt_acl" class="settings"></textarea></td>
+		</tr>
+		
+		<tr><td>persistent store <span>*</span></td>
+		  <td><input type="text" id="mqtt_persistent_store" name="mqtt_persistent_store" placeholder="moquette_store.mapdb" class="settings" /></td>
+		</tr>
+		  
+	  </table>
+	  <h4><div id="username_and_password_h4">User Name and Password</div></h4>
+
+	  <table id="user_table">
+		<thread>
+		  <tr><th>user name</th><th>delete</th></tr>
+		</thread>
+		<tbody id="user_list"></tbody>
+	  </table>
+	  user name: <input type="text" id="username-input" value="" class="baretextinputarea" />
+	  user password: <input type="text" id="password-input" value="" class="baretextinputarea"/>
+	  <input type="button" id="add_user" value="Add user" />
+
+	  <h3>Configuration Web</h3>
+	  <table>
+	  	<tr><td>bind address<span>*</span></td>
+		  <td><div><input type="text" id="jetty_host" name="jetty_host" placeholder="localhost" class="settings" />
+			  <select id="jetty_host_candidate" name="jetty_host_candidate" class="min_candidate" /></div>
+		  </td>
+		</tr>
+	  
+		<tr><td>port number<span>*</span></td>
+		  <td><input type="text" id="jetty_port" name="jetty_port" placeholder="8080" class="settings" /></td>
+		</tr>
+
+<!--		<tr><td>Jetty resource base <span>*</span></td>
+		  <td><input type="text" id="jetty_resource_base" name="jetty_resource_base" placeholder="/var/lib/mqtt-on-piax" class="settings" /></td>
+		</tr> -->
+	  </table>
+
+<!--	  <h3>Logging</h3>
+
+	  <table>
+	  	<tr><td>log level</td>
+		  <td>
+			<input type="radio" id="log_level_trace" name="log_level" value="trace" class="settings">Trace
+			<input type="radio" id="log_level_debug" name="log_level" value="debug" class="settings">Debug
+			<input type="radio" id="log_level_info"  name="log_level" value="info" class="settings">Info
+			<input type="radio" id="log_level_warn"  name="log_level" value="warn" class="settings">Warn
+			<input type="radio" id="log_level_error" name="log_level" value="error" class="settings" checked>Error
+			<input type="radio" id="log_level_none"  name="log_level" value="property_file" class="settings">Use property file
+		  </td>
+		</tr>
+
+		<!-- <tr><td>log output directory <span>*</span></td>
+		  <td><input type="text" id="log_destination" name="log_destination" class="settings" /></td>
+		</tr>
+	  </table> -->
+
+	  <h3>Misc Setting</h3>
+	  <table>
+		<tr><td>update interval</td>
+		  <td><input type="text" id="update_interval" name="update_interval" placeholder="3" value="" class="settings" /></td></tr>
+		<tr><td>auto start</td>
+		  <td>
+			<input type="radio" id="auto_start_yes" name="auto_start" value="yes" class="settings">Yes
+			<input type="radio" id="auto_start_no"  name="auto_start" value="no" class="settings" checked>No
+		</td></tr>
+		<tr><td>clear start</td>
+		  <td>
+			<input type="radio" id="clear_start_yes" name="clear_start" value="yes" class="settings">Yes
+			<input type="radio" id="clear_start_no"  name="clear_start" value="no" class="settings" checked>No
+		</td></tr>
+	  </table>
+
+	  <input type="submit" id="save_button" name="save_button" value="Save">
+	  <input type="button" id="start_button" name="start_button" value="Start">
+	  <input type="button" id="stop_button" name="stop_button" value="Stop">
+	  <div id="need_restart"></div>
+	</form>
+
+
+	<script type="text/javascript">
+	
+	var settings = {};
+	var seconds = 0;
+	var uptimeCounter = null;
+	var startDate = 0;
+	var detail = "";
+	var users = {};
+
+	// set initial state
+	$('#uptime').text('not started');
+	$('#start_button').prop("disabled", false);
+	$('#stop_button').prop("disabled", true);
+	$('#save_button').prop("disabled", true);
+	$('#show_detail').css("display", "none");
+
+	var rules = {
+				piax_seed_ip_address: { required: true },
+				piax_seed_port: { required: true, number: true },
+				piax_ip_address: { required: true },
+				piax_port: { required: true, number: true },
+				piax_peer_id: { required: true },
+				mqtt_bind_address: { required: true },
+				mqtt_port: { required: true, number: true },
+				mqtt_persistent_store: { required: true },
+				jetty_host: { required: true },
+				jetty_port: { required: true, number: true },
+				jetty_resource_base: { required: true },
+				log_destination: { required: true },
+				update_interval: { required: true, number: true }
+	};
+
+	$(document).ready(function() {
+		load_config();
+		load_IPs();
+		$('#setting_form').validate({ rules : rules });
+	});
+
+	$('#start_button').click(function() {
+		console.log("call startBroker0");
+		$('#show_detail').css("display", "none");
+		info = "";
+		startBroker();
+	});
+	
+	$('#stop_button').click(function() {
+		console.log("call stopBroker0");
+		stopBroker();
+	});
+
+	$('input[name="mqtt_allow_anonymous"]:radio').change( function() {
+		password_indispensable($(this).val());
+	});
+
+	$('#setting_form').submit(function(event) {
+		$('#show_detail').css("display", "none");
+		info = "";
+		event.preventDefault();
+		if (!$(this).valid())
+			return;
+		else
+			do_submit();
+	});
+
+	$('#show_detail').click(function() {
+		show_detail();
+	});
+
+	$(".settings").change(function() {
+		$('#save_button').prop("disabled", false);
+	});
+
+	$('#add_user').click(function() {
+		var name = $('#username-input').val();
+		var pass = $('#password-input').val();
+		if (name == "" || pass == "") {
+			alert("user name and user password both are required.");
+			return;
+		}
+		users[name] = sha256(pass);
+		add_td(name);
+		$('#username-input').val("");
+		$('#password-input').val("");
+		$('#save_button').prop("disabled", false);
+	});
+	
+	function load_config() {
+	    $.ajax({
+	        type: "GET",
+			cache: false,
+	        url: "api/loadConfig"
+		}).done(function(data, status, xhr) {
+            console.log("load_config");
+        	if (Object.keys(settings).length === 0) {
+        		settings = data;
+        	} else {
+        	    console.log("already settings exist");
+        	}
+            console.log(settings);
+    		for (var key in settings) {
+            	var v = settings[key];
+            	if (key == "log_level") {
+            		$("input[name='log_level']").val([v]);
+            	} else if (key == "mqtt_allow_anonymous") {
+            		$("input[name='mqtt_allow_anonymous']").val([v]);
+            	} else if (key == "auto_start") {
+					$("input[name='auto_start']").val([v]);
+				} else if (key == "clear_start") {
+					$("input[name='clear_start']").val([v]);
+				} else if (key.match(/^user-\d+/)) {
+					var x = key.replace( /user-/, "pass-");
+					users[v] = settings[x];
+					add_td(v);
+				} else if (key.match(/^pass-\d+/)) {
+					// ignore
+				} else if (key == "start_time") {
+					startDate = parseInt(v, 10);
+				} else {
+                	$('#' + key).val(v);
+                }
+            }
+			password_indispensable(use_anonymous());
+
+			// ここでは startBroker()は呼ばない。
+			// 起動時に Launcherクラスが brokerを起動済みのため。
+			// startDate に値が入っている＝brokerは起動している、
+			// なので、ボタンの表示を変更し、uptimeタイマーを
+			// 開始するために startSuccess() を呼ぶ。
+			if (startDate != 0) {
+				startSuccess();
+			}
+	    });
+	}
+
+	function load_IPs() {
+		$.ajax({
+			type: "GET",
+			cache: false,
+			url: "api/loadIPs"
+		}).done(function(data, status, xhr) {
+			console.log("load_IPs");
+			for (i = 0; i < data.length; i++) {
+				console.log(data[i]);
+				$('#piax_ip_address_candidate').append($('<option>').html(data[i]).val(data[i]));
+				$('#mqtt_bind_address_candidate').append($('<option>').html(data[i]).val(data[i]));
+				$('#jetty_host_candidate').append($('<option>').html(data[i]).val(data[i]));
+			}
+		});
+	}
+
+	function startBroker() {
+		$.ajax({
+			url: 'api/start',
+			type: 'POST',
+			dataType: 'json'
+		}).done(function(data, status, xhr) {
+			console.log("startBroker SUCCESS");
+			startDate = parseInt(data.detail, 10);
+			data.detail = "";
+			show_info(xhr, status, data);
+			
+			$('#need_restart').html("");
+			
+			startSuccess();
+		}).fail(function(xhr, status, errmsg) {
+			console.log("startBroker FAIL");
+			show_error(xhr, status, errmsg);
+		});
+	}
+
+	function stopBroker() {
+		clearInterval(uptimeCounter);
+		$.ajax({
+			url: 'api/stop',
+			type: 'POST'
+		}).done(function(data, status, xhr) {
+			console.log("stopBroker SUCCESS");
+			show_info(xhr, status, data);
+			$('#stop_button').prop("disabled", true);
+			$('#start_button').prop("disabled", false);
+
+			// clearInterval(uptimeCounter);
+			uptimeCounter = null;
+			seconds = 0;
+		}).fail(function(xhr, status, errmsg) {
+			console.log("stopBroker FAIL");
+			show_error(xhr, status, errmsg);
+		});
+	}
+
+	function startSuccess() {
+		$('#start_button').prop("disabled", true);
+		$('#stop_button').prop("disabled", false);
+		$('#uptime').text('started');
+		update();
+		var interval = parseInt($('#update_interval').val());
+		uptimeCounter = setInterval(
+			function() {
+				var now = new Date();
+				diff = now - startDate;
+				var days =  Math.floor(diff/(60*60*1000*24)*1);
+				var hours = Math.floor((diff%(60*60*1000*24))/(60*60*1000)*1);
+				var mins = Math.floor(((diff%(60*60*1000*24))%(60*60*1000))/(60*1000)*1);
+				var secs = Math.floor((((diff%(60*60*1000*24))%(60*60*1000))%(60*1000))/1000*1);
+
+				$('#uptime').text(days.toString() + ' day ' +
+								  hours.toString() + ' hour ' +
+								  mins.toString() + ' mins ' +
+								  secs.toString() + ' secs');
+				update();
+			}, interval * 1000
+		);
+	}
+
+	function update() {
+		$.ajax({
+			url: 'api/getStatistics',
+			type: 'GET',
+			dataType: 'json'
+		}).done(function(data, status, xhr) {
+			console.log("update SUCCESS");
+			console.log(data);
+			if (data != undefined) {
+//				$('#storedMessages').text(data.storedMessages);
+				$('#storedTopics').text(data.storedTopics);
+//				$('#transferedMessages').text(data.transferedMessages);
+				$('#publishedMessages').text(data.publishedMessages);
+				$('#receivedMessagesFromP2P').text(data.receivedMessagesFromPIAX);
+//				$('#connections').DataTable({
+//					data: data.clients,
+//					columns:[ { data: 'clientID'}, {data: 'subscriptions'} ]
+//				});
+				$('#connections').html('<tr><th>clientID</th><th>isActive</th><th>topics</th></tr>');
+				data.clients.sort(
+					function(a, b) {
+						if (a["clientID"] > b["clientID"]) 
+							return 1;
+						else
+							return -1;
+					});
+				for (var i in data.clients) {
+                                        var subString = "";
+                                        for (var j in data.clients[i].subscriptions) {
+                                                subString += data.clients[i].subscriptions[j]["topicFilter"] + " ";
+                                        }
+					$('<tr><td>' + data.clients[i].clientID + '</td><td>' +
+	 				data.clients[i].isActive + '</td><td>' +
+					subString + '</td></tr>')
+					.appendTo('#connections')
+				}
+			}
+		}).fail(function(xhr, status, errmsg) {
+			console.log("update FAIL");
+			show_error(xhr, status, errmsg);
+		});
+	}
+
+	function password_indispensable(val) {
+		if (val == "false") {
+			$('#username_and_password_h4').html('User Name and Password <span>*</span>');
+		} else {
+			$('#username_and_password_h4').html('User Name and Password');
+		}
+	}
+
+	function use_anonymous() {
+		return $("input[name='mqtt_allow_anonymous']:checked").val();
+	}
+
+	function do_submit() {
+		//if ($('#stop_button').prop("disabled") ==  false) {
+		//	alert("Please stop MQTT before Apply.");
+		//	return;
+		//}
+
+		if (use_anonymous() == "false" && Object.keys(users).length == 0) {
+			alert('If "allow anonymous" is "False", user and password are required.');
+			return;
+		}
+	
+		var form = $('#setting_form');
+		var o = {};
+		var a = form.serializeArray();
+		$.each(a, function() {
+			if (o[this.name] !== undefined) {
+				if (!o[this.name].push) {
+					o[this.name] = [o[this.name]];
+				}
+				o[this.name].push(this.value || '');
+			} else {
+				o[this.name] = this.value || '';
+			}
+		});
+		var i = 0;
+		for (var key in users) {
+			o["user-" + i] = key;
+			o["pass-" + i] = users[key];
+			i++;
+		}
+		
+		$.ajax({
+			url: form.attr('action'),
+			type: form.attr('method'),
+			data: JSON.stringify(o)
+		}).done(function(data, status, xhr) {
+			console.log("saveConfig SUCCESS");
+			$('#save_button').prop('disabled', true);
+			show_info(xhr, status, data);
+
+			$('#need_restart').html("<span>Please restart to enable new settings.</span>");
+		}).fail(function(xhr, status, errmsg) {
+			console.log("saveConfig FAIL");
+			show_error(xhr, status, errmsg);
+		});
+	}
+
+	function show_error(xhr, status, errmsg) {
+		console.log("show_error");
+		console.log(xhr.responseText);
+		var info;
+		try {
+			info = JSON.parse(xhr.responseText);
+		} catch (e) {
+			info = {msg: "JSON parse error", detail:"Unexpected internal error."};
+		}
+		console.log("info=");
+		console.log(info);
+		$('#info').html('<pre><span>' + info.msg + '</span></pre>');
+		detail = info.detail;
+		$('#show_detail').toggle();
+	}
+
+	function show_info(xhr, status, data) {
+		console.log("show_info");
+		console.log(xhr);
+		console.log(status);
+		console.log(data);
+		$('#info').html('<pre>' + data.msg + '</pre>');
+	}
+
+	function show_detail() {
+		if ($('#show_detail').val() == "More...") {
+			$('#info_detail').html('<pre><span>' + detail + '</span></pre>');
+			$('#show_detail').val("Hide");
+		} else {
+			$('#info_detail').html("");
+			$('#show_detail').val("More...");
+		}
+	}
+
+	function del_user(username,target) {
+		target.parent().parent().remove();
+		delete users[username];
+		$('#save_button').prop("disabled", false);
+	}
+
+	function add_td(username) {
+		var s = '<tr><td>' + username + '</td>' +
+		      '<td><input type="button" value="x" onClick=';
+ 		s += "'";
+		s += 'del_user("' +  username  + '", $(this))';
+ 		s += "'";
+		s += '></td></tr>';
+		$(s).appendTo('#user_list');
+	}
+
+	$(document).ajaxError(function() {
+		console.log("ajaxError");
+		if (uptimeCounter != null) {
+			clearInterval(uptimeCounter);
+			uptimeCounter = null;
+			$('#info').html('<pre><span>Web Server may be down</span></pre>');
+		}
+	});
+
+	$('#piax_ip_address_candidate').bind("change", function() {
+		console.log($(this).val());
+		$('#piax_ip_address').val($(this).val());
+	});
+	$('#mqtt_bind_address_candidate').bind("change", function() {
+		console.log($(this).val());
+		$('#mqtt_bind_address').val($(this).val());
+	});
+	</script>
+
+  </body>
+</html>
