@@ -60,8 +60,8 @@
     <developerConnection>scm:git:git://github.com/piax/piqt.git</developerConnection>
     <url>http://github.com/piax/piqt/tree/master</url>
   </scm>
-<!-- Enable this if original moquette has getSubscriptions API.
   <repositories>
+    <!-- Enable this if original moquette has getSubscriptions API.
     <repository>
       <id>bintray</id>
       <url>http://dl.bintray.com/andsel/maven/</url>
@@ -71,9 +71,7 @@
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
-    </repository>
-  </repositories> -->
-  <repositories>
+    </repository> -->
     <repository>
       <id>local-repo</id>
       <url>file:../local-repo</url>
