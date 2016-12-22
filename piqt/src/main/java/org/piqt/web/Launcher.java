@@ -44,6 +44,7 @@ import net.arnx.jsonic.JSON;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.eclipse.jetty.security.HashLoginService;
 import org.piax.pubsub.MqException;
 import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piqt.peer.PeerMqEngineMoquette;
@@ -193,6 +194,10 @@ public class Launcher {
         String rb = System.getProperty(PIQT_PATH_PROPERTY_NAME) + File.separator + "WebContent";
         logger.info("content path: " + rb);
         wap.setResourceBase(rb);
+        
+        HashLoginService loginService = new HashLoginService("PIQTRealm");
+        loginService.setConfig(rb + File.separator + "piqtrealm.txt");
+        server.addBean(loginService);
 
         server.setHandler(wap);
         /**/
