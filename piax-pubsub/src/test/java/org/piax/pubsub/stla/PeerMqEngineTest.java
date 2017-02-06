@@ -257,5 +257,36 @@ public class PeerMqEngineTest {
             e.printStackTrace();
         }
     }
+
+    @Test
+    public void UnsubscribeTest() {
+        try {
+            PeerMqEngine engine1 = new PeerMqEngine("localhost", 12367);
+            MqCallback cb1 = new MqCallback() {
+                @Override
+                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
+                        throws Exception {
+                    System.out.println(new String(m.getPayload()));
+                }
+                @Override
+                public void deliveryComplete(MqDeliveryToken token) {
+                }
+            };
+            engine1.setCallback(cb1);
+            PeerMqDeliveryToken.USE_DELEGATE = false;
+            engine1.setSeed("localhost", 12367);
+            engine1.connect();
+            Thread.sleep(200);
+            engine1.subscribe("#");
+            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
+            engine1.unsubscribe("#");
+            assertTrue(engine1.subscribes.size() == 0);
+            engine1.disconnect();
+            engine1.fin();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
     
 }
