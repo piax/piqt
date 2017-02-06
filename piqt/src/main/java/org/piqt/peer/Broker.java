@@ -12,9 +12,11 @@ package org.piqt.peer;
 
 import io.moquette.interception.InterceptHandler;
 import io.moquette.server.Server;
-import io.moquette.server.config.ClasspathConfig;
+import io.moquette.server.config.ClasspathResourceLoader;
 import io.moquette.server.config.IConfig;
+import io.moquette.server.config.IResourceLoader;
 import io.moquette.server.config.MemoryConfig;
+import io.moquette.server.config.ResourceLoaderConfig;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,7 +45,9 @@ public class Broker {
 
     public Broker(PeerMqEngineMoquette engine, Properties web_config) {
         if (web_config == null) {
-            config = new ClasspathConfig();
+            IResourceLoader classpathLoader = new ClasspathResourceLoader();
+            config = new ResourceLoaderConfig(classpathLoader);
+            //config = new ClasspathConfig();
             config.setProperty("port", String.valueOf(port));
             ++port;
         } else {

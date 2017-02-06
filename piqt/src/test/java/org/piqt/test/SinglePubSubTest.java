@@ -12,8 +12,10 @@ package org.piqt.test;
 
 import static org.junit.Assert.assertTrue;
 import io.moquette.server.Server;
-import io.moquette.server.config.ClasspathConfig;
+import io.moquette.server.config.ClasspathResourceLoader;
 import io.moquette.server.config.IConfig;
+import io.moquette.server.config.IResourceLoader;
+import io.moquette.server.config.ResourceLoaderConfig;
 
 import java.net.InetSocketAddress;
 import java.util.Properties;
@@ -94,7 +96,9 @@ public class SinglePubSubTest {
 
     // @Test
     public void MoquetteTest() throws Exception {
-        IConfig classPathConfig = new ClasspathConfig();
+        //IConfig classPathConfig = new ClasspathConfig();
+        IResourceLoader classpathLoader = new ClasspathResourceLoader();
+        IConfig classPathConfig  = new ResourceLoaderConfig(classpathLoader);
         Server mqttBroker = new Server();
         mqttBroker.startServer(classPathConfig);
         System.out.println("Broker started");

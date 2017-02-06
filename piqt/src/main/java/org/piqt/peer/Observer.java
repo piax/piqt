@@ -5,6 +5,7 @@ import static org.piqt.peer.Util.stackTraceStr;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
 import io.moquette.interception.messages.InterceptConnectMessage;
+import io.moquette.interception.messages.InterceptConnectionLostMessage;
 import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.interception.messages.InterceptSubscribeMessage;
@@ -124,6 +125,12 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
     @Override
     public void onClose() {
         // Nothing to do
+    }
+
+    @Override
+    public void onConnectionLost(InterceptConnectionLostMessage msg) {
+        logger.info("clientID=" + msg.getClientID());
+        stats.down(msg.getClientID());
     }
 
 }

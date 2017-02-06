@@ -61,20 +61,16 @@
     <url>http://github.com/piax/piqt/tree/master</url>
   </scm>
   <repositories>
-    <!-- Enable this if original moquette has getSubscriptions API.
+    <!-- Enable this if original moquette has getSubscriptions API. -->
     <repository>
       <id>bintray</id>
-      <url>http://dl.bintray.com/andsel/maven/</url>
+      <url>https://jcenter.bintray.com</url>
       <releases>
         <enabled>true</enabled>
       </releases>
       <snapshots>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </snapshots>
-    </repository> -->
-    <repository>
-      <id>local-repo</id>
-      <url>file:../local-repo</url>
     </repository>
   </repositories>
   <properties>
@@ -97,19 +93,13 @@
     <dependency>
       <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
-      <version>0.9-SNAPSHOT</version>
+      <version>0.9</version>
     </dependency>
-    <!-- dl.bintray.com -->
+    <!-- dl.bintray.com  -->
     <dependency>
       <groupId>io.moquette</groupId>
       <artifactId>moquette-netty-parser</artifactId>
-      <version>0.9-SNAPSHOT</version>
-    </dependency>
-    <!-- hazelcast -->
-    <dependency>
-      <groupId>com.hazelcast</groupId>
-      <artifactId>hazelcast</artifactId>
-      <version>3.5.4</version>
+      <version>0.9</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans -->
     <dependency>
@@ -153,18 +143,18 @@
       <artifactId>HdrHistogram</artifactId>
       <version>2.1.9</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.mapdb/mapdb -->
+    <!-- https://mvnrepository.com/artifact/org.mapdb/mapdb
     <dependency>
       <groupId>org.mapdb</groupId>
       <artifactId>mapdb</artifactId>
       <version>1.0.8</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
+    </dependency> -->
+    <!-- https://mvnrepository.com/artifact/io.netty/netty-all
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
       <version>4.1.4.Final</version>
-    </dependency>
+    </dependency> -->
     <!-- https://mvnrepository.com/artifact/org.glassfish.jersey.core/jersey-server -->
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>

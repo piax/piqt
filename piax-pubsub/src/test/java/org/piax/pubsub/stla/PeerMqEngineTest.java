@@ -169,5 +169,93 @@ public class PeerMqEngineTest {
             e.printStackTrace();
         }
     }
+
+    @Test
+    public void UserMigrationTest() {
+        try {
+            AtomicInteger count = new AtomicInteger();
+            PeerMqEngine engine1 = new PeerMqEngine("localhost", 12367);
+            PeerMqEngine engine2 = new PeerMqEngine("localhost", 12368);
+            PeerMqEngine engine3 = new PeerMqEngine("localhost", 12369);
+            MqCallback cb1 = new MqCallback() {
+                @Override
+                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
+                        throws Exception {
+                    count.incrementAndGet();
+                    //System.out.println("received:" + m + " on subscription:"
+                    //        + subscribedTopic.getSpecified() + " for topic:"
+                    //        + m.getTopic() + " on engine1");
+                }
+
+                @Override
+                public void deliveryComplete(MqDeliveryToken token) {
+                    //System.out.println("delivered:"
+                    //        + token.getMessage().getTopic());
+                }
+            };
+            MqCallback cb2 = new MqCallback() {
+                @Override
+                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
+                        throws Exception {
+                    count.incrementAndGet();
+                    //System.out.println("received:" + m + " on subscription:"
+                    //        + subscribedTopic.getSpecified() + " for topic:"
+                    //        + m.getTopic() + " on engine2");
+                }
+
+                @Override
+                public void deliveryComplete(MqDeliveryToken token) {
+                    //System.out.println("delivered:"
+                    //        + token.getMessage().getTopic());
+                }
+            };
+            MqCallback cb3 = new MqCallback() {
+                @Override
+                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
+                        throws Exception {
+                    count.incrementAndGet();
+                   //System.out.println("received:" + m + " on subscription:"
+                   //         + subscribedTopic.getSpecified() + " for topic:"
+                   //         + m.getTopic() + " on engine3");
+                }
+
+                @Override
+                public void deliveryComplete(MqDeliveryToken token) {
+                    //System.out.println("delivered:"
+                    //        + token.getMessage().getTopic());
+                }
+            };
+            engine1.setCallback(cb1);
+            engine2.setCallback(cb2);
+            engine3.setCallback(cb3);
+            PeerMqDeliveryToken.USE_DELEGATE = false;
+            engine1.setSeed("localhost", 12367);
+            engine2.setSeed("localhost", 12367);
+            engine3.setSeed("localhost", 12367);
+            // engine.setClusterId("cluster.test");
+            engine1.connect();
+            engine2.connect();
+            engine3.connect();
+            Thread.sleep(200);
+            engine1.subscribe("sport/tennis/player1");
+            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
+            engine2.subscribe("sport/tennis/player1");
+            engine1.unsubscribe("sport/tennis/player1");
+            engine2.publish("sport/tennis/player1", "hello3".getBytes(), 0);
+            engine2.unsubscribe("sport/tennis/player1");
+            engine3.subscribe("sport/tennis/player1");
+            engine2.publish("sport/tennis/player1", "hello4".getBytes(), 0);
+            Thread.sleep(1000);
+            assertTrue(count.get() == 3);
+            engine1.disconnect();
+            engine2.disconnect();
+            engine3.disconnect();
+            engine1.fin();
+            engine2.fin();
+            engine3.fin();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     
 }
