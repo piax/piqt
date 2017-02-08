@@ -1,20 +1,13 @@
-package org.piqt.test;
-
 /*
- * Copyright (c) 2012-2017 The original author or authorsgetRockQuestions()
- * ------------------------------------------------------
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * and Apache License v2.0 which accompanies this distribution.
+ * BrokerTest.java -- tests using MQTT clients. 
+ * 
+ * Copyright (c) 2017 PIAX development team
  *
- * The Eclipse Public License is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * The Apache License v2.0 is available at
- * http://www.opensource.org/licenses/apache2.0.php
- *
- * You may elect to redistribute this code under either of these licenses.
+ * You can redistribute it and/or modify it under either the terms of
+ * the AGPLv3 or PIAX binary code license. See the file COPYING
+ * included in the PIQT package for more in detail.
  */
+package org.piqt.test;
 
 import static org.junit.Assert.assertTrue;
 
@@ -110,15 +103,15 @@ public class BrokerTest {
         File tmpFile2 = new File(tmpDir, "c2");
         String persistentFile2 = tmpFile2.getAbsolutePath();
         TestBroker sb2 = new TestBroker(10001, 10000, 10884, persistentFile2);
-
+        IMqttClient c1 = null, c2 = null;
         try {
             sb1.start();
             sb2.start();
             Thread.sleep(1000);
             MyMqttCallback mmc1 = new MyMqttCallback();
-            IMqttClient c1 = client(10883, "c1", persistentFile1, mmc1);
+            c1 = client(10883, "c1", persistentFile1, mmc1);
             MyMqttCallback mmc2 = new MyMqttCallback();
-            IMqttClient c2 = client(10884, "c2", persistentFile1, mmc2);
+            c2 = client(10884, "c2", persistentFile1, mmc2);
             subscribe(c2);
             publish(c1);
             Thread.sleep(1000);
@@ -128,13 +121,12 @@ public class BrokerTest {
             
             System.out.println(mmc1.getCount());
             assertTrue(mmc1.getCount() == 0);
-            
+        }
+        finally {
             close(c1);
             close(c2);
             sb1.fin();
             sb2.fin();
-        }
-        finally {
             cleanPersistenceFile(persistentFile1);
             cleanPersistenceFile(persistentFile2);
         }
@@ -147,28 +139,22 @@ public class BrokerTest {
         File tmpFile1 = new File(tmpDir, "c1");
         String persistentFile1 = tmpFile1.getAbsolutePath();
         TestBroker sb1 = new TestBroker(10000, 10000, 10883, persistentFile1);
-        
-        /*File tmpFile2 = new File(tmpDir, "c2");
-        String persistentFile2 = tmpFile2.getAbsolutePath();
-        SingleBroker sb2 = new SingleBroker(10001, 10000, 10884, persistentFile2);
-         */
+        IMqttClient c1 = null;
         try {
             sb1.start();
-            // sb2.start();
             Thread.sleep(1000);
             MyMqttCallback mmc = new MyMqttCallback();
-            IMqttClient c1 = client(10883, "c1", persistentFile1, mmc);
+            c1 = client(10883, "c1", persistentFile1, mmc);
             subscribe(c1);
             publish(c1);
             Thread.sleep(1000);
             System.out.println(mmc.getCount());
             assertTrue(mmc.getCount() == 1);
-            close(c1);
-            sb1.fin();
         }
         finally {
+            close(c1);
+            sb1.fin();
             cleanPersistenceFile(persistentFile1);
-            //cleanPersistenceFile(persistentFile2);
         }
     }
 }
