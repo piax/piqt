@@ -42,8 +42,6 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
     //PeerId peerId;
     Observer observer;
     
-    static public String PEER_CLIENT_ID = "piqt";
-
     public PeerMqEngineMoquette(String host, int port,
             Properties config) throws MqException {
         super(host, port);
