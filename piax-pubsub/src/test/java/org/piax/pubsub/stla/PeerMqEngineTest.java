@@ -1,6 +1,7 @@
 package org.piax.pubsub.stla;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -258,6 +259,8 @@ public class PeerMqEngineTest {
         }
     }
 
+    
+    
     @Test
     public void UnsubscribeTest() {
         try {
@@ -278,9 +281,14 @@ public class PeerMqEngineTest {
             engine1.connect();
             Thread.sleep(200);
             engine1.subscribe("#");
+            int size = engine1.o.getKeys().size();
             engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
             engine1.unsubscribe("#");
             assertTrue(engine1.subscribes.size() == 0);
+            assertFalse(engine1.o.getKeys().size() == size);
+//            Thread.sleep(500);
+//            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
+//            Thread.sleep(2000);
             engine1.disconnect();
             engine1.fin();
         } catch (Exception e) {
