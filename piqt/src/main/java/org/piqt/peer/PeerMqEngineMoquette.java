@@ -106,7 +106,7 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
 
     public void publish(String topic, String clientId, byte[] payload, int qos, boolean retain)
             throws MqException {
-        MqMessage m = new MqMessageMoquette(topic, peer.getPeerId().toString(), clientId);
+        MqMessage m = new MqMessageMoquette(topic, peer.getPeerId(), clientId);
         m.setPayload(payload);
         m.setQos(qos);
         m.setRetained(retain);

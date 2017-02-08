@@ -10,6 +10,7 @@
  */
 package org.piqt.peer;
 
+import org.piax.common.PeerId;
 import org.piax.pubsub.MqMessage;
 
 public class MqMessageMoquette extends MqMessage {
@@ -18,20 +19,20 @@ public class MqMessageMoquette extends MqMessage {
 	 * 
 	 */
     private static final long serialVersionUID = -957783061937044610L;
-    String peerId;
+    PeerId peerId;
     String clientId;
 
     public MqMessageMoquette(String topic) {
         super(topic);
     }
 
-    public MqMessageMoquette(String topic, String peerId, String clientId) {
+    public MqMessageMoquette(String topic, PeerId peerId, String clientId) {
         super(topic);
         this.peerId = peerId;
         this.clientId = clientId;
     }
 
-    public String getPeerId() {
+    public PeerId getPeerId() {
         return peerId;
     }
     

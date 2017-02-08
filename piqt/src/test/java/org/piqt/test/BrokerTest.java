@@ -113,9 +113,9 @@ public class BrokerTest {
             MyMqttCallback mmc2 = new MyMqttCallback();
             c2 = client(10884, "c2", persistentFile1, mmc2);
             subscribe(c2);
+            Thread.sleep(1000);
             publish(c1);
             Thread.sleep(1000);
-
             System.out.println(mmc2.getCount());
             assertTrue(mmc2.getCount() == 1);
             
@@ -146,6 +146,7 @@ public class BrokerTest {
             MyMqttCallback mmc = new MyMqttCallback();
             c1 = client(10883, "c1", persistentFile1, mmc);
             subscribe(c1);
+            Thread.sleep(1000);
             publish(c1);
             Thread.sleep(1000);
             System.out.println(mmc.getCount());
