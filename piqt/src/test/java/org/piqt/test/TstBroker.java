@@ -10,33 +10,16 @@
  */
 package org.piqt.test;
 
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_ALLOW_ANONYMOUS;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_BIND_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_PERSISTENT_STORE;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_PORT;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_IP_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_PORT;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_SEED_IP_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_SEED_PORT;
-
 import java.util.Properties;
 
-import org.piax.common.Destination;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.ddll.NodeMonitor;
-import org.piax.gtrans.ov.ring.MessagingFramework;
-import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.ov.szk.Suzaku;
-import org.piax.gtrans.raw.udp.UdpLocator;
-import org.piax.gtrans.util.ThroughTransport;
 import org.piax.pubsub.MqException;
-import org.piax.pubsub.stla.LATKey;
 import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piqt.peer.PeerMqEngineMoquette;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestBroker {
+public class TstBroker {
 
     static Logger logger = LoggerFactory.getLogger(OnePeerMoquette.class);
 
@@ -47,7 +30,7 @@ public class TestBroker {
 
     String host = "localhost";
 
-    public TestBroker(int port, int seedPort, int mqttPort, String persistentStore) {
+    public TstBroker(int port, int seedPort, int mqttPort, String persistentStore) {
         try {
             e = new PeerMqEngineMoquette(host, port, toMQTTProps(mqttPort, persistentStore));
         } catch (MqException e1) {

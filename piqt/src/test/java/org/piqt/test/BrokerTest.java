@@ -98,11 +98,11 @@ public class BrokerTest {
         
         File tmpFile1 = new File(tmpDir, "c1");
         String persistentFile1 = tmpFile1.getAbsolutePath();
-        TestBroker sb1 = new TestBroker(10000, 10000, 10883, persistentFile1);
+        TstBroker sb1 = new TstBroker(10000, 10000, 10883, persistentFile1);
         
         File tmpFile2 = new File(tmpDir, "c2");
         String persistentFile2 = tmpFile2.getAbsolutePath();
-        TestBroker sb2 = new TestBroker(10001, 10000, 10884, persistentFile2);
+        TstBroker sb2 = new TstBroker(10001, 10000, 10884, persistentFile2);
         IMqttClient c1 = null, c2 = null;
         try {
             sb1.start();
@@ -138,7 +138,7 @@ public class BrokerTest {
         
         File tmpFile1 = new File(tmpDir, "c1");
         String persistentFile1 = tmpFile1.getAbsolutePath();
-        TestBroker sb1 = new TestBroker(10000, 10000, 10883, persistentFile1);
+        TstBroker sb1 = new TstBroker(10000, 10000, 10883, persistentFile1);
         IMqttClient c1 = null;
         try {
             sb1.start();
