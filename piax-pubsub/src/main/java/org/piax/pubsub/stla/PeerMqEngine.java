@@ -27,7 +27,7 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
-import org.piax.gtrans.ov.szk.Suzaku;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.pubsub.MqCallback;
 import org.piax.pubsub.MqDeliveryToken;

@@ -112,7 +112,7 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>    
     <!-- https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api -->
     <dependency>
