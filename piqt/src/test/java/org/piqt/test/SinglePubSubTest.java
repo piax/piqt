@@ -251,9 +251,6 @@ public class SinglePubSubTest {
 
         System.out.println("start sleep 3 sec");
         Thread.sleep(3000);
-        //for (int i = 0; i < numOfPeers; i++) {
-        	//	szk[i].scheduleFingerTableUpdate(1000000, 5000);  why 1000000?
-        	//}
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(5 * 1000);
 
         // List<Object> failures = new ArrayList<Object>();

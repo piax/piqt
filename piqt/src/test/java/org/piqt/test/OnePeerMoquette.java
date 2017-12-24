@@ -134,8 +134,6 @@ public class OnePeerMoquette implements Runnable {
         }
         System.out.println(Thread.currentThread() + ":" + e.getPeerId() + " connected.");
 
-        // Why 1000000?
-        //szk.scheduleFingerTableUpdate(1000000, 5000);
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(5 * 1000);
 
         // piax only
