@@ -25,10 +25,11 @@ import org.piax.common.Destination;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.ring.MessagingFramework;
 import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.pubsub.MqCallback;
 import org.piax.pubsub.MqDeliveryToken;
@@ -250,9 +251,7 @@ public class SinglePubSubTest {
 
         System.out.println("start sleep 3 sec");
         Thread.sleep(3000);
-        for (int i = 0; i < numOfPeers; i++) {
-            szk[i].scheduleFingerTableUpdate(1000000, 5000);
-        }
+        SuzakuStrategy.UPDATE_FINGER_PERIOD.set(5 * 1000);
 
         // List<Object> failures = new ArrayList<Object>();
         // for (int i = 1; i * 10 < numOfPeers; i++) {

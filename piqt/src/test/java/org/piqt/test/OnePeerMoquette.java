@@ -27,10 +27,11 @@ import java.util.Properties;
 
 import org.piax.common.Destination;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.ring.MessagingFramework;
 import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.gtrans.util.ThroughTransport;
 import org.piax.pubsub.MqException;
@@ -133,7 +134,7 @@ public class OnePeerMoquette implements Runnable {
         }
         System.out.println(Thread.currentThread() + ":" + e.getPeerId() + " connected.");
 
-        szk.scheduleFingerTableUpdate(1000000, 5000);
+        SuzakuStrategy.UPDATE_FINGER_PERIOD.set(5 * 1000);
 
         // piax only
         // if (prop.getProperty(KEY_PIAX_PEER_ID).equals("p1")) {
