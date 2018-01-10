@@ -11,6 +11,7 @@ package org.piax.pubsub.stla;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
+import org.piax.common.Option.BooleanOption;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.FutureQueue;
@@ -43,7 +44,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     MqCallback c = null;
     int seqNo = 0;
     public static int ACK_INTERVAL = -1;
-    public static boolean USE_DELEGATE = true;
+    public static BooleanOption USE_DELEGATE = new BooleanOption(true, "-use-delegate");
 
     TopicDelegator[] delegators;
 
@@ -86,10 +87,6 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
             }
             for (int i = 0; i < qs.length; i++) {
                 if (qs[i] != null) {
-                    if (qs[i].isEmpty()) { // no response.
-                        logger.debug("empty queue for {}", topics[i]);
-                        continue;
-                    }
                     for (RemoteValue<?> rv : qs[i]) {
                         Endpoint e = (Endpoint) rv.getValue();
                         if (e != null) {
@@ -164,7 +161,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     }
 
     public void startDelivery(PeerMqEngine engine) throws MqException {
-        if (USE_DELEGATE) {
+        if (USE_DELEGATE.value()) {
             startDeliveryDelegate(engine);
         } else {
             startDeliveryEach(engine);

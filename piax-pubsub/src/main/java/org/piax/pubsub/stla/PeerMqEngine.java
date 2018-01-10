@@ -9,8 +9,8 @@
  */
 package org.piax.pubsub.stla;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,32 +19,30 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
+import org.piax.common.TransportId;
 import org.piax.gtrans.FutureQueue;
-import org.piax.gtrans.Peer;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
-import org.piax.gtrans.raw.udp.UdpLocator;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.piax.pubsub.MqCallback;
 import org.piax.pubsub.MqDeliveryToken;
 import org.piax.pubsub.MqEngine;
 import org.piax.pubsub.MqException;
 import org.piax.pubsub.MqMessage;
 import org.piax.pubsub.MqTopic;
+import org.piax.pubsub.stla.Delegator.ControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PeerMqEngine implements MqEngine,
-        OverlayListener<Destination, LATKey> {
+        OverlayListener<Destination, LATKey>, Closeable {
     private static final Logger logger = LoggerFactory
             .getLogger(PeerMqEngine.class);
-    protected Peer peer;
     protected PeerId pid;
-    protected PeerLocator seed;
+    protected String seed;
     protected Overlay<Destination, LATKey> o;
     protected MqCallback callback;
     protected Delegator<Endpoint> d;
@@ -57,6 +55,7 @@ public class PeerMqEngine implements MqEngine,
     protected List<LATKey> joinedKeys; // joined keys;
 
     public static int DELIVERY_TIMEOUT = 3000;
+    public static String NETTY_TYPE = "tcp";
     int seqNo;
 
     public PeerMqEngine(Overlay<Destination, LATKey> overlay)
@@ -64,9 +63,7 @@ public class PeerMqEngine implements MqEngine,
         subscribes = new ArrayList<MqTopic>();
         joinedKeys = new ArrayList<LATKey>();
         o = overlay;
-        Transport<?> t = o.getLowerTransport();
-        peer = t.getPeer();
-        pid = peer.getPeerId();
+        pid = o.getPeerId();
         try {
             d = new Delegator<Endpoint>(this);
         } catch (Exception e) {
@@ -80,27 +77,42 @@ public class PeerMqEngine implements MqEngine,
         joinedKeys = new ArrayList<LATKey>();
         this.host = host;
         this.port = port;
-        peer = Peer.getInstance(pid = PeerId.newId());
         try {
-            o = new Suzaku<Destination, LATKey>(
-                    peer.newBaseChannelTransport(new UdpLocator(
-                            new InetSocketAddress(host, port))));
-            d = new Delegator<Endpoint>(this);
+            o = new Suzaku<>("id:*:" + NETTY_TYPE + ":" + host + ":" + port);
+            d = new Delegator<>(this);
         } catch (Exception e) {
             throw new MqException(e);
         }
+        pid = o.getLowerTransport().getPeerId();
+        Transport<Endpoint> t = ((Transport<Endpoint>)o.getLowerTransport());
+        t.setListener(new TransportId("delegate"), (trans, mes) -> {
+            ControlMessage c = (ControlMessage)mes.getMessage();
+            d.delegate(c);
+        });
+        t.setListener(new TransportId("delegated"), (trans, mes) -> {
+            ControlMessage c = (ControlMessage)mes.getMessage();
+            d.delegated(c);
+        });
+        t.setListener(new TransportId("failed"), (trans, mes) -> {
+            ControlMessage c = (ControlMessage)mes.getMessage();
+            d.failed(c);
+        });
+        t.setListener(new TransportId("succeeded"), (trans, mes) -> {
+            ControlMessage c = (ControlMessage)mes.getMessage();
+            d.succeeded(c);
+        });
     }
 
     ConcurrentHashMap<Integer, PeerMqDeliveryToken> tokens = new ConcurrentHashMap<Integer, PeerMqDeliveryToken>();
 
     ConcurrentHashMap<String, TopicDelegator[]> delegateCache = new ConcurrentHashMap<String, TopicDelegator[]>();
 
-    public void delegate(PeerMqDeliveryToken token, Endpoint e, String topic,
-            MqMessage message) {
-        DelegatorIf dif = d.getStub(e);
+    @SuppressWarnings("unchecked")
+    public void delegate(PeerMqDeliveryToken token, Endpoint e, String topic, MqMessage message) {
         tokens.put(token.seqNo, token);
-        dif.delegate(o.getLowerTransport().getEndpoint(), token.seqNo, topic,
-                message);
+        ((Transport<Endpoint>)o.getLowerTransport()).sendAsync(new TransportId("delegate"), e, 
+                new ControlMessage(o.getLowerTransport().getEndpoint(),
+                        token.seqNo, topic, message, (short) -1));
     }
     
     public int getPort() {
@@ -130,7 +142,7 @@ public class PeerMqEngine implements MqEngine,
     }
 
     public void setSeed(String host, int port) {
-        seed = new UdpLocator(new InetSocketAddress(host, port));
+        seed = NETTY_TYPE + ":" + host + ":" + port;
     }
 
     public void setClusterId(String clusterId) {
@@ -222,6 +234,7 @@ public class PeerMqEngine implements MqEngine,
                 joinedKeys.add(key);
             }
         } catch (IOException e) {
+            e.printStackTrace();
             throw new MqException(e);
         }
     }
@@ -244,8 +257,13 @@ public class PeerMqEngine implements MqEngine,
     }
 
     @Override
+    public void close() {
+        fin();
+    }
+    
+    @Override
     public void fin() {
-        peer.fin();
+        o.fin();
     }
 
     @Override
@@ -326,8 +344,7 @@ public class PeerMqEngine implements MqEngine,
     @Override
     public FutureQueue<?> onReceiveRequest(Overlay<Destination, LATKey> ov,
             OverlayReceivedMessage<LATKey> rmsg) {
-        logger.debug("onReceiveRequest on Overlay: overlay={} rmsg={} keys={}", ov,
-                rmsg, o.getKeys());
+        
 
         Object msg = rmsg.getMessage();
         if (msg instanceof DelegatorCommand) {// requested by findDelegators.
@@ -336,6 +353,7 @@ public class PeerMqEngine implements MqEngine,
             boolean noMatch = true;
             for (LATKey key : rmsg.getMatchedKeys()) {
                 if (searchTopic.equals(key.getKey().topic)) {
+                    logger.debug("searchTopic found: '{}'", searchTopic);
                     noMatch = false;
                 }
             }

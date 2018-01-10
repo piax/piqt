@@ -10,11 +10,7 @@
  */
 package org.piqt.peer;
 
-import static org.piqt.peer.Util.newline;
-import static org.piqt.peer.Util.stackTraceStr;
-import io.moquette.parser.proto.messages.AbstractMessage;
-import io.moquette.parser.proto.messages.PublishMessage;
-import io.moquette.spi.impl.ProtocolProcessor;
+import static org.piqt.peer.Util.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -33,6 +29,10 @@ import org.piax.pubsub.stla.LATopic;
 import org.piax.pubsub.stla.PeerMqEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.moquette.parser.proto.messages.AbstractMessage;
+import io.moquette.parser.proto.messages.PublishMessage;
+import io.moquette.spi.impl.ProtocolProcessor;
 
 public class PeerMqEngineMoquette extends PeerMqEngine {
     private static final Logger logger = LoggerFactory
@@ -106,7 +106,7 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
 
     public void publish(String topic, String clientId, byte[] payload, int qos, boolean retain)
             throws MqException {
-        MqMessage m = new MqMessageMoquette(topic, peer.getPeerId(), clientId);
+        MqMessage m = new MqMessageMoquette(topic, getPeerId(), clientId);
         m.setPayload(payload);
         m.setQos(qos);
         m.setRetained(retain);
@@ -118,7 +118,7 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
         if (m instanceof MqMessageMoquette) {
             MqMessageMoquette msg = (MqMessageMoquette) m;
             c = msg.getClientId();
-            if (msg.getPeerId().equals(peer.getPeerId())) {
+            if (msg.getPeerId().equals(getPeerId())) {
                 return;
             }
         }

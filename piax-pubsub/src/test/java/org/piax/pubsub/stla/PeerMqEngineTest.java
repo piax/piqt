@@ -1,11 +1,10 @@
 package org.piax.pubsub.stla;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.pubsub.MqCallback;
 import org.piax.pubsub.MqDeliveryToken;
 import org.piax.pubsub.MqMessage;
@@ -61,37 +60,40 @@ public class PeerMqEngineTest {
     }
     
     @Test
-    public void MultiplePeersWithDelegateTest() {
-        PeerMqDeliveryToken.USE_DELEGATE = true;
+    public void MultiplePeersWithDelegateTest() throws Exception {
+        PeerMqDeliveryToken.USE_DELEGATE.set(true);
         MultiplePeersRun();
     }
     
     @Test
-    public void MultiplePeersWithoutDelegateTest() {
-        PeerMqDeliveryToken.USE_DELEGATE = false;
+    public void MultiplePeersWithoutDelegateTest() throws Exception {
+        PeerMqDeliveryToken.USE_DELEGATE.set(false);
         MultiplePeersRun();
     }
     
-    public void MultiplePeersRun() {
-        try {
+    public void MultiplePeersRun() throws Exception {
+        try(
+                PeerMqEngine engine1 = new PeerMqEngine("localhost", 12367);
+                PeerMqEngine engine2 = new PeerMqEngine("localhost", 12368);
+                PeerMqEngine engine3 = new PeerMqEngine("localhost", 12369);
+                )
+        {
             AtomicInteger count = new AtomicInteger();
-            PeerMqEngine engine1 = new PeerMqEngine("localhost", 12367);
-            PeerMqEngine engine2 = new PeerMqEngine("localhost", 12368);
-            PeerMqEngine engine3 = new PeerMqEngine("localhost", 12369);
+            
             MqCallback cb1 = new MqCallback() {
                 @Override
                 public void messageArrived(MqTopic subscribedTopic, MqMessage m)
                         throws Exception {
                     count.incrementAndGet();
-                   // System.out.println("received:" + m + " on subscription:"
-                   //         + subscribedTopic.getSpecified() + " for topic:"
-                   //         + m.getTopic() + " on engine1");
+                   //System.out.println("received:" + m + " on subscription:"
+                   //        + subscribedTopic.getSpecified() + " for topic:"
+                   //        + m.getTopic() + " on engine1");
                 }
 
                 @Override
                 public void deliveryComplete(MqDeliveryToken token) {
-                    //System.out.println("delivered:"
-                    //        + token.getMessage().getTopic());
+                   //System.out.println("delivered:"
+                   //       + token.getMessage().getTopic());
                 }
             };
             MqCallback cb2 = new MqCallback() {
@@ -163,11 +165,6 @@ public class PeerMqEngineTest {
             engine1.disconnect();
             engine2.disconnect();
             engine3.disconnect();
-            engine1.fin();
-            engine2.fin();
-            engine3.fin();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -229,7 +226,7 @@ public class PeerMqEngineTest {
             engine1.setCallback(cb1);
             engine2.setCallback(cb2);
             engine3.setCallback(cb3);
-            PeerMqDeliveryToken.USE_DELEGATE = false;
+            //PeerMqDeliveryToken.USE_DELEGATE = false;
             engine1.setSeed("localhost", 12367);
             engine2.setSeed("localhost", 12367);
             engine3.setSeed("localhost", 12367);
@@ -276,7 +273,7 @@ public class PeerMqEngineTest {
                 }
             };
             engine1.setCallback(cb1);
-            PeerMqDeliveryToken.USE_DELEGATE = false;
+            //PeerMqDeliveryToken.USE_DELEGATE = false;
             engine1.setSeed("localhost", 12367);
             engine1.connect();
             Thread.sleep(200);

@@ -9,28 +9,11 @@
  */
 package org.piax.pubsub.stla;
 
-import java.io.Serializable;
+import org.piax.pubsub.stla.Delegator.ControlMessage;
 
-import org.piax.common.Endpoint;
-import org.piax.gtrans.RPCIf;
-import org.piax.gtrans.RemoteCallable;
-import org.piax.gtrans.RemoteCallable.Type;
-
-/*
- * RPC interface for Delegator.  
- */
-public interface DelegatorIf extends RPCIf {
-    @RemoteCallable(Type.ONEWAY)
-    void delegate(Endpoint sender, int tokenId, String topic,
-            Serializable message);
-
-    // responses
-    @RemoteCallable(Type.ONEWAY)
-    void delegated(Endpoint sender, int tokenId, String topic);
-
-    @RemoteCallable(Type.ONEWAY)
-    void succeeded(Endpoint sender, int tokenId, String topic);
-
-    @RemoteCallable(Type.ONEWAY)
-    void failed(Endpoint sender, int tokenId, String topic, short reasonCode);
+public interface DelegatorIf {
+    void delegate(ControlMessage c);
+    void delegated(ControlMessage c);
+    void succeeded(ControlMessage c);
+    void failed(ControlMessage c);
 }

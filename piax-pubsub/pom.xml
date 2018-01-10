@@ -4,7 +4,7 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-pubsub</artifactId>
   <packaging>jar</packaging>
-  <version>1.0-SNAPSHOT</version>
+  <version>2.0-SNAPSHOT</version>
   <name>PIAX PubSub</name>
   <description>A topic-based pub/sub library on PIAX</description>
   <url>http://piqt.org/</url>
@@ -61,17 +61,34 @@
   <dependencies>
     <!-- Test dependencies -->
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>5.0.2</version>
+    </dependency>
+     <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>1.0.2</version>
+        <scope>test</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans -->
     <dependency>
       <groupId>org.piax</groupId>
-      <artifactId>piax-gtrans</artifactId>
-      <version>3.2-SNAPSHOT</version>
+      <artifactId>piax-gtrans-suzaku</artifactId>
+      <version>4.0-SNAPSHOT</version>
     </dependency>    
+    <dependency> 
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.21</version> 
+      <scope>test</scope>
+    </dependency> 
   </dependencies>
   <build>
     <plugins>
