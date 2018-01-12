@@ -16,6 +16,7 @@ import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
@@ -25,8 +26,7 @@ import org.piax.pubsub.MqMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Delegator<E extends Endpoint>// extends RPCInvoker<DelegatorIf, E>
-        implements DelegatorIf {
+public class Delegator<E extends Endpoint> {
     private static final Logger logger = LoggerFactory
             .getLogger(Delegator.class);
     static TransportId rpcId = new TransportId("pmqr");
@@ -35,54 +35,62 @@ public class Delegator<E extends Endpoint>// extends RPCInvoker<DelegatorIf, E>
     
     static public class ControlMessage implements Serializable {
         public int tokenId;
-        public String topic;
+        public String kString;
         public Endpoint source;
         public Serializable content;
         public short reasonCode;
-        public ControlMessage(Endpoint source, int tokenId, String topic, Serializable content, short reasonCode) {
+        public ControlMessage(Endpoint source, int tokenId, String kString, Serializable content, short reasonCode) {
             super();
             this.tokenId = tokenId;
-            this.topic = topic;
+            this.kString = kString;
             this.source = source;
             this.content = content;
             this.reasonCode = reasonCode;
         }
-        public ControlMessage(Endpoint source, int tokenId, String topic, Serializable content) {
+        public ControlMessage(Endpoint source, int tokenId, String kString, short reasonCode) {
             super();
             this.tokenId = tokenId;
-            this.topic = topic;
+            this.kString = kString;
+            this.source = source;
+            this.reasonCode = reasonCode;
+        }
+        public ControlMessage(Endpoint source, int tokenId, String kString, Serializable content) {
+            super();
+            this.tokenId = tokenId;
+            this.kString = kString;
             this.source = source;
             this.content = content;
             this.reasonCode = (short) -1;
         }
-        public ControlMessage(Endpoint source, int tokenId, String topic) {
+        public ControlMessage(Endpoint source, int tokenId, String kString) {
             super();
             this.tokenId = tokenId;
-            this.topic = topic;
+            this.kString = kString;
             this.source = source;
             this.content = null;
             this.reasonCode = (short) -1;
         }
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     public Delegator(PeerMqEngine engine) throws IdConflictException,
             IOException {
         this.engine = engine;
     }
 
-    @Override
+    /*
+     * deliver messages to the kString region from the local engine.
+     * the result is notified to the sender of controlmessage.
+     * 
+     * @see org.piax.pubsub.stla.DelegatorIf#delegate(org.piax.pubsub.stla.Delegator.ControlMessage)
+     */
+    @SuppressWarnings("unchecked")
     public void delegate(ControlMessage c) {
         Endpoint sender = c.source;
         int tokenId = c.tokenId;
-        String topic = c.topic;
+        String kString = c.kString;
         Serializable message = c.content;
-        logger.debug("peer {} delegated topic {}", engine.getPeerId(), topic);
+        logger.debug("peer {} starting dissemination for kString:{}", engine.getPeerId(), kString);
         Transport<Endpoint> trans =((Transport<Endpoint>)engine.getOverlay().getLowerTransport());
-        
-        trans.setListener(new TransportId("succeeded"), (t, rmsg)->{
-            
-        });
         
         try {
             RetransMode mode;
@@ -108,28 +116,39 @@ public class Delegator<E extends Endpoint>// extends RPCInvoker<DelegatorIf, E>
                 break;
             }
             engine.getOverlay().requestAsync(
-                    new KeyRange<LATKey>(new LATKey(LATopic.topicMin(topic)),
-                            new LATKey(LATopic.topicMax(topic))), (Object) m,
+                    new KeyRange<LATKey>(new LATKey(LATopic.topicMin(kString)),
+                            new LATKey(LATopic.topicMax(kString))), (Object) m,
                     (res, ex)->{
-                        if (ex != null) {
+                        logger.debug("dissemination requestAsync received: {}", res);
+                        if (Response.EOR.equals(res)) {
+                            logger.debug("EOR. dissemination for requestAsync for kString:{} qos={} finished:", kString, m.getQos());
+                            trans.sendAsync(
+                                    new TransportId("succeeded"),
+                                    sender,
+                                    new ControlMessage(trans.getEndpoint(),
+                                            tokenId,
+                                            kString)
+                                    );
+                        }
+                        else if (ex != null) {
+                            logger.debug("requestAsync for kString:{} failed:", kString, ex);
                             trans.sendAsync(
                                     new TransportId("failed"),
                                     sender,
                                     new ControlMessage(trans.getEndpoint(),
                                             tokenId,
-                                            topic,
+                                            kString,
                                             null, MqException.REASON_CODE_UNEXPECTED_ERROR)
                                     );
                         }
                     }, mesOpts);
-            logger.debug("requested topic:" + topic + ", m=" + m + ",on " + engine.getHost() + ":" + engine.getPort());
+            logger.debug("requested topic:" + kString + ", m=" + m + ",on " + engine.getHost() + ":" + engine.getPort());
             trans.sendAsync(
                     new TransportId("delegated"),
                     sender,
                     new ControlMessage(trans.getEndpoint(),
                             tokenId,
-                            topic,
-                            null, (short) -1)
+                            kString)
                     );
         } catch (Exception e) {
             e.printStackTrace();
@@ -138,37 +157,27 @@ public class Delegator<E extends Endpoint>// extends RPCInvoker<DelegatorIf, E>
                     sender,
                     new ControlMessage(trans.getEndpoint(),
                             tokenId,
-                            topic,
+                            kString,
                             null, MqException.REASON_CODE_UNEXPECTED_ERROR)
                     );
         }
-        trans.sendAsync(
-                new TransportId("succeeded"),
-                sender,
-                new ControlMessage(trans.getEndpoint(),
-                        tokenId,
-                        topic,
-                        null, (short)-1)
-                );
+        
     }
 
-    @Override
     public void delegated(ControlMessage c) {
-        String topic = c.topic;
+        String topic = c.kString;
         logger.debug("peer:" + engine.getPeerId() + " received delegated :"
                 + topic);
     }
 
-    @Override
     public void succeeded(ControlMessage c) {
         int tokenId = c.tokenId;
-        String topic = c.topic;
+        String topic = c.kString;
             logger.debug("peer:" + engine.getPeerId() + " received succeeded :"
                 + topic);
         engine.delegationSucceeded(tokenId, topic);
     }
 
-    @Override
     public void failed(ControlMessage c) {
         logger.debug("peer:" + engine.getPeerId() + " received failed");
     }

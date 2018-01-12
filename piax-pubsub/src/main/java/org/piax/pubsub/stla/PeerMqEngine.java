@@ -14,13 +14,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
-import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
@@ -58,6 +58,9 @@ public class PeerMqEngine implements MqEngine,
     public static String NETTY_TYPE = "tcp";
     int seqNo;
 
+    ConcurrentHashMap<Integer, PeerMqDeliveryToken> tokens = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, NearestDelegator> delegateCache = new ConcurrentHashMap<>();
+
     public PeerMqEngine(Overlay<Destination, LATKey> overlay)
             throws MqException {
         subscribes = new ArrayList<MqTopic>();
@@ -72,6 +75,7 @@ public class PeerMqEngine implements MqEngine,
         seqNo = 0;
     }
 
+    @SuppressWarnings("unchecked")
     public PeerMqEngine(String host, int port) throws MqException {
         subscribes = new ArrayList<MqTopic>();
         joinedKeys = new ArrayList<LATKey>();
@@ -87,6 +91,7 @@ public class PeerMqEngine implements MqEngine,
         Transport<Endpoint> t = ((Transport<Endpoint>)o.getLowerTransport());
         t.setListener(new TransportId("delegate"), (trans, mes) -> {
             ControlMessage c = (ControlMessage)mes.getMessage();
+            logger.debug("delegating: content={}", c.content);
             d.delegate(c);
         });
         t.setListener(new TransportId("delegated"), (trans, mes) -> {
@@ -103,16 +108,15 @@ public class PeerMqEngine implements MqEngine,
         });
     }
 
-    ConcurrentHashMap<Integer, PeerMqDeliveryToken> tokens = new ConcurrentHashMap<Integer, PeerMqDeliveryToken>();
-
-    ConcurrentHashMap<String, TopicDelegator[]> delegateCache = new ConcurrentHashMap<String, TopicDelegator[]>();
-
     @SuppressWarnings("unchecked")
-    public void delegate(PeerMqDeliveryToken token, Endpoint e, String topic, MqMessage message) {
-        tokens.put(token.seqNo, token);
-        ((Transport<Endpoint>)o.getLowerTransport()).sendAsync(new TransportId("delegate"), e, 
-                new ControlMessage(o.getLowerTransport().getEndpoint(),
+    public CompletableFuture<Void> delegate(PeerMqDeliveryToken token, Endpoint e, String topic, MqMessage message) {
+        return ((Transport<Endpoint>)o.getLowerTransport()).sendAsync(new TransportId("delegate"), e, 
+                new ControlMessage(getEndpoint(),
                         token.seqNo, topic, message, (short) -1));
+    }
+
+    public Endpoint getEndpoint() {
+        return o.getLowerTransport().getEndpoint();
     }
     
     public int getPort() {
@@ -123,22 +127,26 @@ public class PeerMqEngine implements MqEngine,
         return host;
     }
 
-    public void foundDelegators(String topic, TopicDelegator[] delegators) {
-        delegateCache.put(topic, delegators);
+    public void foundDelegator(String topic, DeliveryDelegator delegator) {
+        delegateCache.put(topic, delegator);
     }
 
-    public TopicDelegator[] getDelegators(String topic) {
+    public NearestDelegator getNearestDelegator(String topic) {
         return delegateCache.get(topic);
     }
+    
+    public void removeDelegator(String topic) {
+        delegateCache.remove(topic);
+    }
 
-    public void delegationSucceeded(int tokenId, String topic) {
+    public void delegationSucceeded(int tokenId, String kString) {
         PeerMqDeliveryToken token = tokens.get(tokenId);
         if (token == null) {
             logger.info("unregistered delivery succeeded: tokenId={}", tokenId);
         }
-        if (token.delegationSucceeded(topic)) {
-            tokens.remove(tokenId);
-        }
+        token.delegationSucceeded(kString);
+        
+        //tokens.remove(tokenId);
     }
 
     public void setSeed(String host, int port) {
@@ -342,14 +350,12 @@ public class PeerMqEngine implements MqEngine,
     }
 
     @Override
-    public FutureQueue<?> onReceiveRequest(Overlay<Destination, LATKey> ov,
+    public Object onReceiveRequest(Overlay<Destination, LATKey> ov,
             OverlayReceivedMessage<LATKey> rmsg) {
-        
-
         Object msg = rmsg.getMessage();
-        if (msg instanceof DelegatorCommand) {// requested by findDelegators.
-            DelegatorCommand com = (DelegatorCommand) msg;
-            String searchTopic = com.topic;
+        if (msg instanceof ControlMessage) {// requested by findDelegators.
+            ControlMessage c = (ControlMessage) msg;
+            String searchTopic = c.kString;
             boolean noMatch = true;
             for (LATKey key : rmsg.getMatchedKeys()) {
                 if (searchTopic.equals(key.getKey().topic)) {
@@ -358,25 +364,33 @@ public class PeerMqEngine implements MqEngine,
                 }
             }
             if (noMatch) {
-                return ov.singletonFutureQueue(null); // the topic did not match. null return. 
+                // XXX appropriate delegator cannot be found if there is no engine lower than a LATKey.
+                // ex.if t1.id2 and t2.id4 are joined,
+                // a query from t2.id3 matches to t1.id2.
+                // then, we need to forward it to the next neighbor tobic (TODO).
+                // the current implementation returns null.
+                
+                return null; // the topic did not match. null return. 
             }
-            return ov.singletonFutureQueue(o.getLowerTransport().getEndpoint());
+            
+            d.delegate(c); // when completed, succeeded is send to sender 
+            logger.debug("received control message: {} on {}", c, getPeerId());
+            return getEndpoint();
         }
 
-        List<String> matched = new ArrayList<String>();
-        Throwable th = null;
+        MqMessage m = (MqMessage) rmsg.getMessage();
         try {
             for (MqTopic t : subscribes) {
-                MqMessage m = (MqMessage) rmsg.getMessage();
                 if (t.matchesToTopic(m.getTopic())) {
-                    matched.add(t.getSpecified());
                     callback.messageArrived(t, m);
                 }
             }
-        } catch (Exception e) {
-            th = e;
         }
-        return ov.singletonFutureQueue(getPeerId(), th);
+        catch (Exception e) { // XXX how to propargate to the sender?
+            e.printStackTrace();
+        }
+        logger.debug("received message: {} on {}", m, getPeerId());
+        return getPeerId();
     }
 
     @Override
@@ -384,6 +398,7 @@ public class PeerMqEngine implements MqEngine,
         countUpSeqNo();
         PeerMqDeliveryToken t = new PeerMqDeliveryToken(o, m, callback,
                 nextSeqNo());
+        tokens.put(t.seqNo, t);
         t.startDelivery(this);
         return t;
     }

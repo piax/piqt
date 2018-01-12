@@ -9,13 +9,15 @@
  */
 package org.piax.pubsub.stla;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.Option.BooleanOption;
 import org.piax.common.subspace.KeyRange;
-import org.piax.common.subspace.LowerUpper;
-import org.piax.gtrans.FutureQueue;
-import org.piax.gtrans.RemoteValue;
+import org.piax.common.subspace.Lower;
+import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
@@ -26,7 +28,7 @@ import org.piax.pubsub.MqDeliveryToken;
 import org.piax.pubsub.MqException;
 import org.piax.pubsub.MqMessage;
 import org.piax.pubsub.MqTopic;
-import org.piax.util.KeyComparator;
+import org.piax.pubsub.stla.Delegator.ControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,123 +38,132 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     MqMessage m;
     // Overlay<KeyRange<LATKey>, LATKey> o;
     Overlay<Destination, LATKey> o;
-    FutureQueue<?>[] qs;
     boolean isComplete = false;
     MqActionListener aListener = null;
     Object userContext = null;
-    boolean isWaiting = false;
     MqCallback c = null;
     int seqNo = 0;
     public static int ACK_INTERVAL = -1;
     public static BooleanOption USE_DELEGATE = new BooleanOption(true, "-use-delegate");
-
-    TopicDelegator[] delegators;
+    DeliveryDelegator[] delegators;
+    CompletableFuture<Boolean> completionFuture;
 
     public PeerMqDeliveryToken(Overlay<Destination, LATKey> overlay,
             MqMessage message, MqCallback callback, int seqNo) {
+        assert message != null;
         this.m = message;
         this.o = overlay;
         this.c = callback;
         this.seqNo = seqNo;
+        completionFuture = new CompletableFuture<>();
     }
 
-    public TopicDelegator[] findDelegators(PeerMqEngine engine,
-            String[] topics, int qos) throws MqException {
-        FutureQueue<?>[] qs = new FutureQueue<?>[topics.length];
-        TopicDelegator[] ds = new TopicDelegator[topics.length];
-        try {
-            for (int i = 0; i < topics.length; i++) {
-                LATopic lat = new LATopic(topics[i]);
-                if (engine.getClusterId() == null) {
-                    lat = LATopic.clusterMax(lat);
-                } else {
-                    lat.setClusterId(engine.getClusterId());
-                }
-                @SuppressWarnings({ "unchecked", "rawtypes" })
-                KeyRange<?> range = new KeyRange(
-                        KeyComparator.getMinusInfinity(LATKey.class), false,
-                        new LATKey(lat), true);
-                // find the nearest engine.
-                LowerUpper dst = new LowerUpper(range, false, 1);
-                qs[i] = o
-                        .request(dst, (Object) new DelegatorCommand("find", topics[i]),
-                                new TransOptions(ResponseType.DIRECT,
-                                        qos == 0 ? RetransMode.NONE
-                                                : RetransMode.FAST));
-                // this can return the previous neighbor topic.
-                // ex.if t1.id2 and t2.id4 are joined,
-                // a query from t2.id3 matches to t1.id2.
-                // then, we need to forward it to the next neighbor tobic (TODO).
-                // the current implementation just ignore it.
-            }
-            for (int i = 0; i < qs.length; i++) {
-                if (qs[i] != null) {
-                    for (RemoteValue<?> rv : qs[i]) {
-                        Endpoint e = (Endpoint) rv.getValue();
-                        if (e != null) {
-                            ds[i] = new TopicDelegator(e, topics[i]);
-                            logger.debug("delegator for {} : {}", topics[i], rv.getValue());
-                        }
-                        else {
-                            logger.debug("delegator not matched for {}", topics[i]);
-                        }
+    
+    /*
+     * Returns an array of delivery delegators.
+     * Some of them are already delivered. 
+     */
+    public DeliveryDelegator[] startDeliveryWithDelegators(PeerMqEngine engine,
+            String[] kStrings, int qos) throws MqException {
+        DeliveryDelegator[] ds = new DeliveryDelegator[kStrings.length];
+        for (int i = 0; i < kStrings.length; i++) {
+            NearestDelegator nd = engine.getNearestDelegator(kStrings[i]);
+            if (nd != null && nd.getEndpoint() != null) { // XXX ...and not expired.
+                ds[i] = new DeliveryDelegator(nd);
+                logger.debug("found existing delegator for {} : {}", kStrings[i], nd);
+                String kStr = kStrings[i];
+                // deliver to the kString area via d.endpoint.
+                CompletableFuture<Void> cf = engine.delegate(this, ds[i].endpoint, kStr, m);
+                cf.whenComplete((res, ex)-> {
+                    if (ex != null) { // some error occured.
+                        logger.info("An error occured on delegator" + ex.getMessage());
+                        engine.removeDelegator(kStr);
                     }
-                } else {
-                    logger.debug("response for {} was null.", topics[i]);
-                }
+                });
+                //engine.delegate(this, engine.getEndpoint(), kStrings[i], m);
             }
-        } catch (Exception e) {
-            throw new MqException(e);
+            else {
+                ds[i] = findDelegatorAndDeliver(engine, kStrings[i], qos);
+            }
         }
         return ds;
     }
 
-    boolean delegationCompleted() {
-        for (TopicDelegator d : delegators) {
-            if (d != null) {
-                if (!d.succeeded) {
-                    logger.debug("delegationCompleted: not finished: {}",
-                            d.topic);
-                    return false;
-                }
+    /*
+     * 
+     */
+    public DeliveryDelegator findDelegatorAndDeliver(PeerMqEngine engine,
+            String kString, int qos) throws MqException {
+        final DeliveryDelegator d = new DeliveryDelegator(kString);
+        try {
+            LATopic lat = new LATopic(kString);
+            if (engine.getClusterId() == null) {
+                lat = LATopic.clusterMax(lat);
+            } else {
+                lat.setClusterId(engine.getClusterId());
+            }
+            o.requestAsync(new Lower<LATKey>(false, new LATKey(lat), 1),
+                            new ControlMessage(engine.getEndpoint(), seqNo, kString, m),
+                            (ep, ex) -> {
+                                if (Response.EOR.equals(ep)) {
+                                    // cache the delegator whatever the result is.
+                                    engine.foundDelegator(kString, d);
+                                    logger.debug("EOR. delegator for '{}' finished", kString);
+                                }
+                                else if (ex == null) {
+                                    // the result can be null
+                                    d.setEndpoint((Endpoint) ep);
+                                    logger.debug("EOR. delegator for '{}' is {}", kString, ep);
+                                    if (ep == null) { // finish because not found.
+                                        d.setSucceeded();
+                                        delegationFinished();
+                                    }
+                                }
+                                else {
+                                    // note that the d.endpoint is null in this case.
+                                    d.setFailured(ex);
+                                }
+                            },
+                            new TransOptions(ResponseType.DIRECT,
+                                    qos == 0 ? RetransMode.NONE
+                                            : RetransMode.FAST));
+        } catch (Exception e) {
+            throw new MqException(e);
+        }
+        return d;
+    }
+
+    boolean isAllDelegationCompleted() {
+        for (DeliveryDelegator d : delegators) {
+            if (!d.isFinished()) {
+                logger.debug("delegationCompleted: not finished: {}", d.getKeyString());
+                return false;
             }
         }
         logger.debug("delegationCompleted: completed {}", m.getTopic());
         return true;
     }
-
-    public void resetDelegators(TopicDelegator[] delegators) {
-        for (TopicDelegator d : delegators) {
-            if (d != null) {
-                d.succeeded = false;
+    
+    public void delegationSucceeded(String kString) {
+        for (DeliveryDelegator d : delegators) {
+            if (d.getKeyString().equals(kString)) {
+                d.setSucceeded();
+                break;
             }
         }
+        delegationFinished();
     }
 
-    public boolean delegationSucceeded(String topic) {
-        for (TopicDelegator d : delegators) {
-            if (d != null) {
-                logger.debug(
-                        "delegationSucceeded: searching for {}, matching on {}",
-                        topic, d.topic);
-                if (d.topic.equals(topic)) {
-                    logger.debug("delegationSucceeded: succeeded: {}", d.topic);
-                    d.succeeded = true;
-                }
-            }
-        }
-        if (delegationCompleted()) {
+    private boolean delegationFinished() {
+        if (!isComplete && isAllDelegationCompleted()) {
             if (aListener != null) {
                 aListener.onSuccess(this);
             }
-            synchronized (this) {
-                if (isWaiting) {
-                    notify();
-                }
-            }
+            completionFuture.complete(true);
             if (c != null) {
                 c.deliveryComplete(this);
             }
+            logger.debug("finished delivery: {}", m);
             m = null;
             isComplete = true;
             return true;
@@ -172,48 +183,20 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
         String topic = m.getTopic();
         String[] pStrs = new MqTopic(topic).getPublisherKeyStrings();
         int qos = m.getQos();
-        /* delegators for the topic */
-        delegators = engine.getDelegators(topic);
-        if (delegators == null) {
-            delegators = findDelegators(engine, pStrs, qos);
-            boolean found = false;
-            for (int i = 0; i < delegators.length; i++) {
-                if (delegators[i] != null) {
-                    found = true;
-                }
-            }
-            if (found) {
-                engine.foundDelegators(m.getTopic(), delegators);
-                for (TopicDelegator d : delegators) {
-                    if (d != null) {
-                        logger.debug("delegate: endpoint={}, topic={}, m={}",
-                                d.endpoint, d.topic, m);
-                        ;
-                        engine.delegate(this, d.endpoint, d.topic, m);
-                    }
-                }
-            }
-            else {
-                // fall back.
-                startDeliveryEach(engine);
-            }
-        } else {
-            resetDelegators(delegators);
-        }
-        
-        
-        /*
-         * if (aListener != null) { aListener.onSuccess(this); }
-         * synchronized(this) { if (isWaiting) { notify(); } } if (c != null) {
-         * c.deliveryComplete(this); }
-         */
+
+        delegators = startDeliveryWithDelegators(engine, pStrs, qos);
     }
 
     public void startDeliveryEach(PeerMqEngine engine) throws MqException {
-        try {
-            String topic = m.getTopic();
-            String[] pStrs = new MqTopic(topic).getPublisherKeyStrings();
+        String topic = m.getTopic();
+        String[] pStrs = new MqTopic(topic).getPublisherKeyStrings();
+        for (int i = 0; i < pStrs.length; i++) {
+            startDeliveryForPublisherKeyString(engine, pStrs[i]);
+        }
+    }
 
+    public void startDeliveryForPublisherKeyString(PeerMqEngine engine, String kString) throws MqException {
+        try {
             RetransMode mode;
             ResponseType type;
             TransOptions opts;
@@ -235,87 +218,61 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                         mode);
                 break;
             }
-
-            qs = new FutureQueue<?>[pStrs.length];
-            for (int i = 0; i < pStrs.length; i++) {
-                qs[i] = o.request(
-                        new KeyRange<LATKey>(new LATKey(LATopic
-                                .topicMin(pStrs[i])), new LATKey(LATopic
-                                .topicMax(pStrs[i]))), (Object) m, opts);
-            }
+            o.requestAsync(
+                    new KeyRange<LATKey>(new LATKey(LATopic
+                            .topicMin(kString)), new LATKey(LATopic
+                                    .topicMax(kString))), 
+                    (Object) m, 
+                    (res, ex) -> {
+                        if (res == Response.EOR) {
+                            if (aListener != null) {
+                                    aListener.onSuccess(this);
+                                }
+                                completionFuture.complete(true);
+                                if (c != null) {
+                                    c.deliveryComplete(this);
+                                }
+                                m = null;
+                                isComplete = true;
+                            }
+                            // res is the 
+                            if (ex != null) {
+                                completionFuture.completeExceptionally(ex);
+                                if (aListener != null) {
+                                    aListener.onFailure(this, ex);
+                                }
+                            }
+                        },
+                        opts);
         } catch (Exception e) {
             if (aListener != null) {
                 aListener.onFailure(this, e);
             }
             throw new MqException(e);
         }
-        // ClusterId closest = null;
-        for (FutureQueue<?> q : qs) {
-            for (RemoteValue<?> rv : q) {
-                /*
-                 * response is ClusterId ClusterId cid =
-                 * (ClusterId)rv.getValue(); if (closest == null ||
-                 * closest.distance(cid) <
-                 * closest.distance(engine.getClusterId())) { closest = cid; }
-                 */
-                Throwable t = null;
-                if ((t = rv.getException()) != null) {
-                    if (aListener != null) {
-                        aListener.onFailure(this, t);
-                    }
-                }
-            }
-        }
-        if (aListener != null) {
-            aListener.onSuccess(this);
-        }
-        synchronized (this) {
-            if (isWaiting) {
-                notify();
-            }
-        }
-        if (c != null) {
-            c.deliveryComplete(this);
-        }
-        m = null;
-        isComplete = true;
     }
 
     @Override
     public void waitForCompletion() throws MqException {
-        synchronized (this) {
-            if (!isComplete) {
-                try {
-                    isWaiting = true;
-                    wait();
-                } catch (InterruptedException e) {
-                    if (aListener != null) {
-                        aListener.onFailure(this, e);
-                    }
-                    throw new MqException(e);
-                } finally {
-                    isWaiting = false;
-                }
+        try {
+            completionFuture.get();
+        } catch (Exception e) {
+            if (aListener != null) {
+                aListener.onFailure(this, e);
             }
+            throw new MqException(e);
         }
     }
 
     @Override
     public void waitForCompletion(long timeout) throws MqException {
-        synchronized (this) {
-            if (!isComplete) {
-                try {
-                    isWaiting = true;
-                    wait(timeout);
-                } catch (InterruptedException e) {
-                    if (aListener != null) {
-                        aListener.onFailure(this, e);
-                    }
-                    throw new MqException(e);
-                } finally {
-                    isWaiting = false;
-                }
+        try {
+            completionFuture.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            if (aListener != null) {
+                aListener.onFailure(this, e);
             }
+            throw new MqException(e);
         }
     }
 
