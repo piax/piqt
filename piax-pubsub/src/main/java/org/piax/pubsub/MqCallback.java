@@ -43,6 +43,6 @@ public interface MqCallback {
      * @param token
      *            the delivery token associated with the message.
      */
-    public void deliveryComplete(MqDeliveryToken token);
+    default public void deliveryComplete(MqDeliveryToken token) {} // default is do nothing.
 
 }

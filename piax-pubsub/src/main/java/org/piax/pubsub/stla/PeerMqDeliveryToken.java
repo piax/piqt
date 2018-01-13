@@ -10,6 +10,7 @@
 package org.piax.pubsub.stla;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.piax.common.Destination;
@@ -35,9 +36,10 @@ import org.slf4j.LoggerFactory;
 public class PeerMqDeliveryToken implements MqDeliveryToken {
     private static final Logger logger = LoggerFactory
             .getLogger(PeerMqDeliveryToken.class);
-    MqMessage m;
+    final MqMessage m;
     // Overlay<KeyRange<LATKey>, LATKey> o;
-    Overlay<Destination, LATKey> o;
+    final Overlay<Destination, LATKey> o;
+    
     boolean isComplete = false;
     MqActionListener aListener = null;
     Object userContext = null;
@@ -45,7 +47,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     int seqNo = 0;
     public static int ACK_INTERVAL = -1;
     public static BooleanOption USE_DELEGATE = new BooleanOption(true, "-use-delegate");
-    DeliveryDelegator[] delegators;
+    ConcurrentHashMap<String, DeliveryDelegator> delegators;
     CompletableFuture<Boolean> completionFuture;
 
     public PeerMqDeliveryToken(Overlay<Destination, LATKey> overlay,
@@ -56,24 +58,20 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
         this.c = callback;
         this.seqNo = seqNo;
         completionFuture = new CompletableFuture<>();
+        delegators = new ConcurrentHashMap<>();
     }
 
-    
-    /*
-     * Returns an array of delivery delegators.
-     * Some of them are already delivered. 
-     */
-    public DeliveryDelegator[] startDeliveryWithDelegators(PeerMqEngine engine,
-            String[] kStrings, int qos) throws MqException {
-        DeliveryDelegator[] ds = new DeliveryDelegator[kStrings.length];
+    public void startDeliveryWithDelegators(PeerMqEngine engine,
+            String[] kStrings) throws MqException {
         for (int i = 0; i < kStrings.length; i++) {
             NearestDelegator nd = engine.getNearestDelegator(kStrings[i]);
             if (nd != null && nd.getEndpoint() != null) { // XXX ...and not expired.
-                ds[i] = new DeliveryDelegator(nd);
+                DeliveryDelegator d = new DeliveryDelegator(nd);
+                delegators.put(kStrings[i], d);
                 logger.debug("found existing delegator for {} : {}", kStrings[i], nd);
                 String kStr = kStrings[i];
                 // deliver to the kString area via d.endpoint.
-                CompletableFuture<Void> cf = engine.delegate(this, ds[i].endpoint, kStr, m);
+                CompletableFuture<Void> cf = engine.delegate(this, d.endpoint, kStr, m);
                 cf.whenComplete((res, ex)-> {
                     if (ex != null) { // some error occured.
                         logger.info("An error occured on delegator" + ex.getMessage());
@@ -83,18 +81,17 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                 //engine.delegate(this, engine.getEndpoint(), kStrings[i], m);
             }
             else {
-                ds[i] = findDelegatorAndDeliver(engine, kStrings[i], qos);
+                DeliveryDelegator d = new DeliveryDelegator(kStrings[i]);
+                findDelegatorAndDeliver(d, engine, kStrings[i]);
             }
         }
-        return ds;
     }
 
     /*
      * 
      */
-    public DeliveryDelegator findDelegatorAndDeliver(PeerMqEngine engine,
-            String kString, int qos) throws MqException {
-        final DeliveryDelegator d = new DeliveryDelegator(kString);
+    public DeliveryDelegator findDelegatorAndDeliver(DeliveryDelegator d, PeerMqEngine engine,
+            String kString) throws MqException {
         try {
             LATopic lat = new LATopic(kString);
             if (engine.getClusterId() == null) {
@@ -120,12 +117,13 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                                     }
                                 }
                                 else {
+                                    // some exception occured while find & deliver.
                                     // note that the d.endpoint is null in this case.
                                     d.setFailured(ex);
                                 }
                             },
                             new TransOptions(ResponseType.DIRECT,
-                                    qos == 0 ? RetransMode.NONE
+                                    m.getQos() == 0 ? RetransMode.NONE
                                             : RetransMode.FAST));
         } catch (Exception e) {
             throw new MqException(e);
@@ -134,7 +132,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     }
 
     boolean isAllDelegationCompleted() {
-        for (DeliveryDelegator d : delegators) {
+        for (DeliveryDelegator d : delegators.values()) {
             if (!d.isFinished()) {
                 logger.debug("delegationCompleted: not finished: {}", d.getKeyString());
                 return false;
@@ -144,12 +142,17 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
         return true;
     }
     
+    public void replaceExistingDeliveryDelegator(DeliveryDelegator repl) {
+        delegators.put(repl.getKeyString(), repl);
+    }
+    
     public void delegationSucceeded(String kString) {
-        for (DeliveryDelegator d : delegators) {
-            if (d.getKeyString().equals(kString)) {
-                d.setSucceeded();
-                break;
-            }
+        DeliveryDelegator d = delegators.get(kString);
+        if (d != null) {
+            d.setSucceeded();
+        }
+        else {
+            logger.debug("delegationCSucceeded: not found {}", kString);
         }
         delegationFinished();
     }
@@ -164,7 +167,6 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                 c.deliveryComplete(this);
             }
             logger.debug("finished delivery: {}", m);
-            m = null;
             isComplete = true;
             return true;
         }
@@ -180,11 +182,9 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     }
 
     public void startDeliveryDelegate(PeerMqEngine engine) throws MqException {
-        String topic = m.getTopic();
-        String[] pStrs = new MqTopic(topic).getPublisherKeyStrings();
-        int qos = m.getQos();
-
-        delegators = startDeliveryWithDelegators(engine, pStrs, qos);
+        String[] kStrings = new MqTopic(m.getTopic()).getPublisherKeyStrings();
+        startDeliveryWithDelegators(engine, kStrings);
+        logger.debug("delegators=" + delegators);
     }
 
     public void startDeliveryEach(PeerMqEngine engine) throws MqException {
@@ -232,7 +232,6 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
                                 if (c != null) {
                                     c.deliveryComplete(this);
                                 }
-                                m = null;
                                 isComplete = true;
                             }
                             // res is the 
@@ -320,6 +319,11 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     @Override
     public MqMessage getMessage() {
         return m;
+    }
+    
+    @Override
+    public String toString() {
+        return "seqNo:" + seqNo + ",delegtors:" + delegators;
     }
 
 }

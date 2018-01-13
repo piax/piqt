@@ -143,10 +143,42 @@ public class PeerMqEngine implements MqEngine,
         PeerMqDeliveryToken token = tokens.get(tokenId);
         if (token == null) {
             logger.info("unregistered delivery succeeded: tokenId={}", tokenId);
+            return;
         }
+        logger.debug("found token:" + token);
         token.delegationSucceeded(kString);
         
         //tokens.remove(tokenId);
+    }
+    
+    public void delegationRetry(int tokenId, String kString) {
+        logger.debug("delivery for '{}' retrying on {}", kString, getPeerId());
+        PeerMqDeliveryToken token = tokens.get(tokenId);
+        if (token == null) {
+            logger.info("unregistered delivery retried: tokenId={}", tokenId);
+            return;
+        }
+        // Temporarily remove the delivery delegator and re-generate.
+        delegateCache.remove(kString);
+        try {
+            DeliveryDelegator d = new DeliveryDelegator(kString);
+            // XXX concurrent modification.  
+            token.replaceExistingDeliveryDelegator(d);
+            token.findDelegatorAndDeliver(d, this, kString);
+        } catch (MqException e) {
+            
+        }
+    }
+
+    public void delegationFailed(int tokenId, String kString, Exception ex) {
+        PeerMqDeliveryToken token = tokens.get(tokenId);
+        if (token == null) {
+            logger.info("unregistered delivery failed: tokenId={}", tokenId);
+            return;
+        }
+        // Remove the delivery delegator. start from find next time.
+        delegateCache.remove(kString);
+        logger.info("delegation failed for key:{} by exception ", kString, ex);
     }
 
     public void setSeed(String host, int port) {
@@ -163,6 +195,15 @@ public class PeerMqEngine implements MqEngine,
 
     public List<LATKey> getJoinedKeys() {
         return joinedKeys;
+    }
+    
+    public boolean isJoined(String kString) {
+        for (LATKey k : joinedKeys) {
+            if (k.key.getTopic().equals(kString)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     synchronized void countUpSeqNo() {

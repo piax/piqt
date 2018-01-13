@@ -26,6 +26,8 @@ public class MqException extends Exception {
 
     public static final short REASON_CODE_INVALID_TOKEN = 0x07;
     public static final short REASON_SEED_NOT_AVAILABLE = 0x08;
+    
+    public static final short REASON_NOT_SUBSCRIBED = 0x09;
 
     private int reasonCode;
     private Throwable cause;

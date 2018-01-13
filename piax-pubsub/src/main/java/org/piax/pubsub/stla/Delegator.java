@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 import org.piax.common.Endpoint;
+import org.piax.common.Option.BooleanOption;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.gtrans.IdConflictException;
@@ -30,8 +31,8 @@ public class Delegator<E extends Endpoint> {
     private static final Logger logger = LoggerFactory
             .getLogger(Delegator.class);
     static TransportId rpcId = new TransportId("pmqr");
-
-    PeerMqEngine engine;
+    final PeerMqEngine engine;
+    BooleanOption FOLLOW_DELEGATOR_SUBSCRIPTION = new BooleanOption(true, "-follow-delegator-sub");  
     
     static public class ControlMessage implements Serializable {
         public int tokenId;
@@ -92,6 +93,20 @@ public class Delegator<E extends Endpoint> {
         logger.debug("peer {} starting dissemination for kString:{}", engine.getPeerId(), kString);
         Transport<Endpoint> trans =((Transport<Endpoint>)engine.getOverlay().getLowerTransport());
         
+        if (FOLLOW_DELEGATOR_SUBSCRIPTION.value()) {
+            if (!engine.isJoined(kString)) { // Not joined anymore
+                logger.debug("delegated but not joined to {} anymore", kString);
+                trans.sendAsync(
+                        new TransportId("failed"),
+                        sender,
+                        new ControlMessage(trans.getEndpoint(),
+                                tokenId,
+                                kString,
+                                null, MqException.REASON_NOT_SUBSCRIBED)
+                        );
+                return;
+            }
+        }
         try {
             RetransMode mode;
             ResponseType type;
@@ -179,6 +194,17 @@ public class Delegator<E extends Endpoint> {
     }
 
     public void failed(ControlMessage c) {
+        String kString = c.kString;
+        // if recoverable, let the delivery token to retry for delivering the kString.
+        if (c.reasonCode == MqException.REASON_NOT_SUBSCRIBED) { // subscription of delegator changed.
+            int tokenId = c.tokenId;
+            engine.delegationRetry(c.tokenId, kString);
+            return;
+        }
+        // unrecoverable error. just remove and mark as finished. 
+        engine.removeDelegator(kString);
+        engine.delegationFailed(c.tokenId, kString, new MqException(c.reasonCode));
+        
         logger.debug("peer:" + engine.getPeerId() + " received failed");
     }
 }

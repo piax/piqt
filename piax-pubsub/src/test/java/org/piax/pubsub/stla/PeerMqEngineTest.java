@@ -246,6 +246,7 @@ public class PeerMqEngineTest {
             engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
             engine2.subscribe("sport/tennis/player1");
             engine1.unsubscribe("sport/tennis/player1");
+            
             engine2.publish("sport/tennis/player1", "hello3".getBytes(), 0);
             engine2.unsubscribe("sport/tennis/player1");
             engine3.subscribe("sport/tennis/player1");
@@ -267,18 +268,10 @@ public class PeerMqEngineTest {
         try (
                 PeerMqEngine engine1 = new PeerMqEngine("localhost", 12367);
                 ){
-            
-            MqCallback cb1 = new MqCallback() {
-                @Override
-                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                        throws Exception {
-                    System.out.println(new String(m.getPayload()));
-                }
-                @Override
-                public void deliveryComplete(MqDeliveryToken token) {
-                }
-            };
-            engine1.setCallback(cb1);
+            AtomicInteger count = new AtomicInteger(0);
+            engine1.setCallback((topic, message)->{
+                count.incrementAndGet();
+            });
             //PeerMqDeliveryToken.USE_DELEGATE = false;
             engine1.setSeed("localhost", 12367);
             engine1.connect();
@@ -289,6 +282,8 @@ public class PeerMqEngineTest {
             engine1.unsubscribe("#");
             assertTrue(engine1.subscribes.size() == 0);
             assertFalse(engine1.o.getKeys().size() == size);
+            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
+            assertTrue((count.get() == 1));
 //            Thread.sleep(500);
 //            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
 //            Thread.sleep(2000);
