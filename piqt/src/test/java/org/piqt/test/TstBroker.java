@@ -14,7 +14,6 @@ import java.util.Properties;
 
 import org.piax.gtrans.Peer;
 import org.piax.pubsub.MqException;
-import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piqt.peer.PeerMqEngineMoquette;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,7 @@ public class TstBroker {
     }
 
     public void start() {
-        PeerMqDeliveryToken.USE_DELEGATE = false;
+//        PeerMqDeliveryToken.USE_DELEGATE.set(false);
         try {
             e.connect();
         } catch (MqException e1) {

@@ -1,12 +1,11 @@
 package org.piax.pubsub.stla;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 
-import org.junit.Test;
-import org.piax.pubsub.stla.LATopic;
+import org.junit.jupiter.api.Test;
 
 public class LATopicTest {
 

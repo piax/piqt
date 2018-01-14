@@ -10,27 +10,14 @@
  */
 package org.piqt.test;
 
-import static org.junit.Assert.assertTrue;
-import io.moquette.server.Server;
-import io.moquette.server.config.ClasspathResourceLoader;
-import io.moquette.server.config.IConfig;
-import io.moquette.server.config.IResourceLoader;
-import io.moquette.server.config.ResourceLoaderConfig;
+import static org.junit.Assert.*;
 
-import java.net.InetSocketAddress;
 import java.util.Properties;
 
 import org.junit.Test;
+import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.common.Destination;
-import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
-import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
-import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
-import org.piax.gtrans.ov.ddll.NodeMonitor;
-import org.piax.gtrans.ov.ring.MessagingFramework;
-import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.raw.udp.UdpLocator;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.piax.pubsub.MqCallback;
 import org.piax.pubsub.MqDeliveryToken;
 import org.piax.pubsub.MqMessage;
@@ -40,6 +27,12 @@ import org.piax.pubsub.stla.LATKey;
 import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piax.pubsub.stla.PeerMqEngine;
 import org.piqt.peer.PeerMqEngineMoquette;
+
+import io.moquette.server.Server;
+import io.moquette.server.config.ClasspathResourceLoader;
+import io.moquette.server.config.IConfig;
+import io.moquette.server.config.IResourceLoader;
+import io.moquette.server.config.ResourceLoaderConfig;
 
 public class SinglePubSubTest {
     int numOfPeers = 2;
@@ -66,18 +59,18 @@ public class SinglePubSubTest {
         // System.out.println("--- NO DELEGATE ---");
         // runTest2(0, 0);
         count = 0;
-        PeerMqDeliveryToken.USE_DELEGATE = false;
+        PeerMqDeliveryToken.USE_DELEGATE.set(false);;
         //System.out.println("--- USE DELEGATE ---");
         runTest2(0, 0);
         count = 0;
         numOfPeers = 2;
-        PeerMqDeliveryToken.USE_DELEGATE = true;
+        PeerMqDeliveryToken.USE_DELEGATE.set(true);
         //System.out.println("--- USE DELEGATE ---");
         runTest2(0, 0);
         
         count = 0;
         numOfPeers = 8;
-        PeerMqDeliveryToken.USE_DELEGATE = true;
+        PeerMqDeliveryToken.USE_DELEGATE.set(true);
         //System.out.println("--- USE DELEGATE ---");
         runTest2(0, 0);
 
@@ -110,25 +103,10 @@ public class SinglePubSubTest {
     }
 
     public void runTest2(int qos, int failureLevel) throws Exception {
-        Peer p[] = new Peer[numOfPeers];
         PeerMqEngine e[] = new PeerMqEngine[numOfPeers];
-        
-        NodeMonitor.PING_TIMEOUT = 1000000; // to test the retrans without ddll
-                                            // fix
-
-        RQManager.RQ_FLUSH_PERIOD = 50; // the period for flushing partial
-                                        // results in intermediate nodes
-        RQManager.RQ_EXPIRATION_GRACE = 80; // additional grace time before
-                                            // removing RQReturn in intermediate
-                                            // nodes
-        RQManager.RQ_RETRANS_PERIOD = 1000; // range query retransmission period
-
-        MessagingFramework.ACK_TIMEOUT_THRES = 2000;
-        MessagingFramework.ACK_TIMEOUT_TIMER = MessagingFramework.ACK_TIMEOUT_THRES + 50;
 
         int port = startPort;
         for (int i = 0; i < numOfPeers; i++) {
-            p[i] = Peer.getInstance(new PeerId("p" + i));
             ClusterId cid;
             if (i < (numOfPeers / 3)) {
                 cid = new ClusterId("jp.isp1.dc1");
@@ -172,32 +150,11 @@ public class SinglePubSubTest {
 
     @SuppressWarnings("unchecked")
     public void runTest(int qos, int failureLevel) throws Exception {
-        Peer p[] = new Peer[numOfPeers];
         PeerMqEngine e[] = new PeerMqEngine[numOfPeers];
-        EvalTransport<UdpLocator> c[] = new EvalTransport[numOfPeers];
         Suzaku<Destination, LATKey> szk[] = new Suzaku[numOfPeers];
-        NodeMonitor.PING_TIMEOUT = 1000000; // to test the retrans without ddll
-                                            // fix
-
-        RQManager.RQ_FLUSH_PERIOD = 50; // the period for flushing partial
-                                        // results in intermediate nodes
-        RQManager.RQ_EXPIRATION_GRACE = 80; // additional grace time before
-                                            // removing RQReturn in intermediate
-                                            // nodes
-        RQManager.RQ_RETRANS_PERIOD = 1000; // range query retransmission period
-
-        MessagingFramework.ACK_TIMEOUT_THRES = 2000;
-        MessagingFramework.ACK_TIMEOUT_TIMER = MessagingFramework.ACK_TIMEOUT_THRES + 50;
-
-        // FailureSimulationChannelTransport fs[] = new
-        // FailureSimulationChannelTransport[numOfPeers];
         int port = startPort;
 
-        PeerLocator loc = new UdpLocator(new InetSocketAddress("localhost",
-                port++));
-
         for (int i = 0; i < numOfPeers; i++) {
-            p[i] = Peer.getInstance(new PeerId("p" + i));
             ClusterId cid;
             if (i < (numOfPeers / 3)) {
                 cid = new ClusterId("jp.isp1.dc1");
@@ -206,19 +163,7 @@ public class SinglePubSubTest {
             } else {
                 cid = new ClusterId("jp.isp1.dc3");
             }
-
-            // szk[i] = new Suzaku<Destination, LATKey>(
-            // fs[i] = new FailureSimulationChannelTransport<UdpLocator>(
-            // c[i] = new EvalTransport<UdpLocator>(
-            // p[i].newBaseChannelTransport((UdpLocator)((i == 0) ? loc : new
-            // UdpLocator(new InetSocketAddress("localhost", port++))))
-            // , cid)));
-            szk[i] = new Suzaku<Destination, LATKey>(
-                    c[i] = new EvalTransport<UdpLocator>(
-                            p[i].newBaseChannelTransport((UdpLocator) ((i == 0) ? loc
-                                    : new UdpLocator(new InetSocketAddress(
-                                            "localhost", port++)))), cid));
-
+            szk[i] = new Suzaku<>("id:*:tcp:localhost" + (port++));
             e[i] = new PeerMqEngine(szk[i]);
             e[i].setSeed("localhost", startPort);
             e[i].setClusterId(cid.toString());

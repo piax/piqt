@@ -10,14 +10,7 @@
  */
 package org.piqt.test;
 
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_ALLOW_ANONYMOUS;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_BIND_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_PERSISTENT_STORE;
-import static org.piqt.web.MqttPiaxConfig.KEY_MQTT_PORT;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_IP_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_PORT;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_SEED_IP_ADDRESS;
-import static org.piqt.web.MqttPiaxConfig.KEY_PIAX_SEED_PORT;
+import static org.piqt.web.MqttPiaxConfig.*;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,18 +18,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.common.Destination;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
-import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
-import org.piax.gtrans.ov.ddll.NodeMonitor;
-import org.piax.gtrans.ov.ring.MessagingFramework;
-import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.raw.udp.UdpLocator;
-import org.piax.gtrans.util.ThroughTransport;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.piax.pubsub.MqException;
 import org.piax.pubsub.stla.LATKey;
-import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piqt.peer.PeerMqEngineMoquette;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +38,6 @@ public class OnePeerMoquette implements Runnable {
     PeerMqEngineMoquette e;
     // piax only
     // PeerMqEngine e;
-    ThroughTransport<UdpLocator> c;
     Suzaku<Destination, LATKey> szk;
 
     public void init(String path) throws IOException {
@@ -98,21 +84,6 @@ public class OnePeerMoquette implements Runnable {
     }
 
     public void run() {
-
-        NodeMonitor.PING_TIMEOUT = 1000000; // to test the retrans without ddll
-                                            // fix
-
-        RQManager.RQ_FLUSH_PERIOD = 50; // the period for flushing partial
-                                        // results in intermediate nodes
-        RQManager.RQ_EXPIRATION_GRACE = 80; // additional grace time before
-                                            // removing RQReturn in intermediate
-                                            // nodes
-        RQManager.RQ_RETRANS_PERIOD = 1000; // range query retransmission period
-
-        PeerMqDeliveryToken.USE_DELEGATE = false;
-        MessagingFramework.ACK_TIMEOUT_THRES = 2000;
-        MessagingFramework.ACK_TIMEOUT_TIMER = MessagingFramework.ACK_TIMEOUT_THRES + 50;
-
         try {
             e = new PeerMqEngineMoquette(prop.getProperty(KEY_PIAX_IP_ADDRESS),
                     Integer.valueOf(prop.getProperty(KEY_PIAX_PORT)),

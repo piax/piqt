@@ -79,15 +79,31 @@
   <dependencies>
     <!-- Test dependencies -->
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>5.0.2</version>
+    </dependency>
+     <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>1.0.2</version>
+        <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-pubsub</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>2.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans-suzaku</artifactId>
+      <version>4.0-SNAPSHOT</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3 -->
     <dependency>
@@ -107,13 +123,7 @@
       <groupId>io.moquette</groupId>
       <artifactId>moquette-netty-parser</artifactId>
       <version>0.9</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans -->
-    <dependency>
-      <groupId>org.piax</groupId>
-      <artifactId>piax-gtrans</artifactId>
-      <version>3.2-SNAPSHOT</version>
-    </dependency>    
+    </dependency>   
     <!-- https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api -->
     <dependency>
       <groupId>javax.ws.rs</groupId>
