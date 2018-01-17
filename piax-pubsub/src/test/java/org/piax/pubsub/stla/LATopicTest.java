@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
+import org.piax.util.KeyComparator;
 
 public class LATopicTest {
 
@@ -47,6 +48,13 @@ public class LATopicTest {
 
         assertTrue(l.get(0).equals(t5));
         assertTrue(l.get(5).equals(t6));
+        
+        LATKey k = new LATKey(t7);
+        LATKey m = new LATKey(LATopic.minTopic());
+        LATKey m2 = new LATKey(LATopic.minTopic());
+        KeyComparator kc = KeyComparator.getInstance(); 
+        assertTrue(kc.compare(k, m) > 0);
+        assertTrue(kc.compare(m, m2) != kc.compare(m2, m));
     }
 
 }

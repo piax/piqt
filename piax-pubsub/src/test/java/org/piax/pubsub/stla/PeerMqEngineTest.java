@@ -181,58 +181,12 @@ public class PeerMqEngineTest {
                 PeerMqEngine engine3 = new PeerMqEngine("localhost", 12369);
                 ){
             AtomicInteger count = new AtomicInteger();
-            
-            MqCallback cb1 = new MqCallback() {
-                @Override
-                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                        throws Exception {
-                    count.incrementAndGet();
-                    //System.out.println("received:" + m + " on subscription:"
-                    //        + subscribedTopic.getSpecified() + " for topic:"
-                    //        + m.getTopic() + " on engine1");
-                }
-
-                @Override
-                public void deliveryComplete(MqDeliveryToken token) {
-                    //System.out.println("delivered:"
-                    //        + token.getMessage().getTopic());
-                }
+            MqCallback cb = (t, m) -> {
+                count.incrementAndGet();
             };
-            MqCallback cb2 = new MqCallback() {
-                @Override
-                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                        throws Exception {
-                    count.incrementAndGet();
-                    //System.out.println("received:" + m + " on subscription:"
-                    //        + subscribedTopic.getSpecified() + " for topic:"
-                    //        + m.getTopic() + " on engine2");
-                }
-
-                @Override
-                public void deliveryComplete(MqDeliveryToken token) {
-                    //System.out.println("delivered:"
-                    //        + token.getMessage().getTopic());
-                }
-            };
-            MqCallback cb3 = new MqCallback() {
-                @Override
-                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                        throws Exception {
-                    count.incrementAndGet();
-                   //System.out.println("received:" + m + " on subscription:"
-                   //         + subscribedTopic.getSpecified() + " for topic:"
-                   //         + m.getTopic() + " on engine3");
-                }
-
-                @Override
-                public void deliveryComplete(MqDeliveryToken token) {
-                    //System.out.println("delivered:"
-                    //        + token.getMessage().getTopic());
-                }
-            };
-            engine1.setCallback(cb1);
-            engine2.setCallback(cb2);
-            engine3.setCallback(cb3);
+            engine1.setCallback(cb);
+            engine2.setCallback(cb);
+            engine3.setCallback(cb);
             //PeerMqDeliveryToken.USE_DELEGATE = false;
             engine1.setSeed("localhost", 12367);
             engine2.setSeed("localhost", 12367);
@@ -252,7 +206,7 @@ public class PeerMqEngineTest {
             engine3.subscribe("sport/tennis/player1");
             engine2.publish("sport/tennis/player1", "hello4".getBytes(), 0);
             Thread.sleep(1000);
-            assertTrue(count.get() == 3);
+            assertEquals(3, count.get());
             engine1.disconnect();
             engine2.disconnect();
             engine3.disconnect();
@@ -279,11 +233,13 @@ public class PeerMqEngineTest {
             engine1.subscribe("#");
             int size = engine1.o.getKeys().size();
             engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
+            Thread.sleep(200);
             engine1.unsubscribe("#");
-            assertTrue(engine1.subscribes.size() == 0);
+            assertEquals(0,engine1.subscribes.size());
             assertFalse(engine1.o.getKeys().size() == size);
             engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
-            assertTrue((count.get() == 1));
+            Thread.sleep(200);
+            assertEquals(1,count.get());
 //            Thread.sleep(500);
 //            engine1.publish("sport/tennis/player1", "hello2".getBytes(), 0);
 //            Thread.sleep(2000);

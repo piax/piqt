@@ -13,6 +13,7 @@ package org.piqt.test;
 import static org.junit.Assert.*;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
@@ -24,7 +25,6 @@ import org.piax.pubsub.MqMessage;
 import org.piax.pubsub.MqTopic;
 import org.piax.pubsub.stla.ClusterId;
 import org.piax.pubsub.stla.LATKey;
-import org.piax.pubsub.stla.PeerMqDeliveryToken;
 import org.piax.pubsub.stla.PeerMqEngine;
 import org.piqt.peer.PeerMqEngineMoquette;
 
@@ -37,55 +37,34 @@ import io.moquette.server.config.ResourceLoaderConfig;
 public class SinglePubSubTest {
     int numOfPeers = 2;
     static int startPort = 12360;
-    static int count = 0;
+    static AtomicInteger count = new AtomicInteger(0);
     static final int FLEVELS = 4;
 
     synchronized public static void countUp() {
-        count++;
+        count.incrementAndGet();
     }
 
     synchronized public static int count() {
-        return count;
+        return count.get();
     }
 
     synchronized public static void clearCount() {
-        count = 0;
+        count.set(0);
     }
 
     @Test
-    public void PublishTest() throws Exception {
+    public void PublishTestMinimal() throws Exception {
         System.out.println("@@@ PublishTest");
-        // PeerMqDeliveryToken.USE_DELEGATE = false;
-        // System.out.println("--- NO DELEGATE ---");
-        // runTest2(0, 0);
-        count = 0;
-        PeerMqDeliveryToken.USE_DELEGATE.set(false);;
-        //System.out.println("--- USE DELEGATE ---");
-        runTest2(0, 0);
-        count = 0;
         numOfPeers = 2;
-        PeerMqDeliveryToken.USE_DELEGATE.set(true);
-        //System.out.println("--- USE DELEGATE ---");
+        clearCount();
         runTest2(0, 0);
+    }
         
-        count = 0;
-        numOfPeers = 8;
-        PeerMqDeliveryToken.USE_DELEGATE.set(true);
-        //System.out.println("--- USE DELEGATE ---");
+    @Test
+    public void PublishTestMulti() throws Exception {
+        clearCount();
+        numOfPeers = 16;
         runTest2(0, 0);
-
-        // System.out.println("--- USE DELEGATE ---");
-        // PeerMqDeliveryToken.USE_DELEGATE = true;
-        // runTest(0, 0);
-        // // warm up hot spot
-        // System.out.println("---start---");
-        // System.out.println("--- NO DELEGATE ---");
-        // PeerMqDeliveryToken.USE_DELEGATE = false;
-        // runTest(0, 0);
-        // System.out.println("--- USE DELEGATE ---");
-        // PeerMqDeliveryToken.USE_DELEGATE = true;
-        // runTest(0, 0);
-
     }
 
     // @Test
@@ -123,29 +102,22 @@ public class SinglePubSubTest {
             port++; // 12362
             e[i].setSeed("localhost", startPort);
             e[i].setClusterId(cid.toString());
-            e[i].setCallback(new MqCallback() {
-                @Override
-                public void messageArrived(MqTopic subscribedTopic, MqMessage m)
-                        throws Exception {
+            e[i].setCallback((t, m) -> {
+                    //System.out.println("received on " + t);
                     countUp();
-                }
-
-                @Override
-                public void deliveryComplete(MqDeliveryToken token) {
-                }
-            });
+                });
             e[i].connect();
         }
-
-        e[1].subscribe("sport/tennis/+");
-        Thread.sleep(100);
+        //Thread.sleep(1000);
+        e[1].subscribe("sport/tennis/+"); // if same as 0
+        System.out.println("subscribed");
         e[0].publish("sport/tennis/player1", String.valueOf(e[0].getPort()).getBytes(), qos);
-
+        Thread.sleep(3000);
+        assertEquals(1,count());
         for (int i = 0; i < numOfPeers; i++) {
             e[i].disconnect();
-            e[i].fin();
+            e[i].close();
         }
-        assertTrue(count == 1);
     }
 
     @SuppressWarnings("unchecked")
@@ -171,30 +143,30 @@ public class SinglePubSubTest {
                 @Override
                 public void messageArrived(MqTopic subscribedTopic, MqMessage m)
                         throws Exception {
-                    System.out.println("@@@ messageArrived");
+                    //System.out.println("@@@ messageArrived");
                     byte[] body = m.getPayload();
                     String msg = new String(body, "UTF-8");
-                    System.out.println("time="
-                            + (System.currentTimeMillis() - Long
-                                    .parseLong(new String(body))) + " msg="
-                            + msg);
+                    //System.out.println("time="
+                    //        + (System.currentTimeMillis() - Long
+                    //                .parseLong(new String(body))) + " msg="
+                    //        + msg);
                     countUp();
                 }
 
                 @Override
                 public void deliveryComplete(MqDeliveryToken token) {
-                    System.out.println("@@@ deliveryComplete");
+                    //System.out.println("@@@ deliveryComplete");
                 }
             });
             e[i].connect();
-            System.out.println("e" + i + " " + cid);
+            //System.out.println("e" + i + " " + cid);
             // Thread.sleep(100);
         }
 
         e[1].subscribe("sport/tennis/+");
-        System.out.println("@@@ e1 subscribed");
+        //System.out.println("@@@ e1 subscribed");
 
-        System.out.println("start sleep 3 sec");
+        //System.out.println("start sleep 3 sec");
         Thread.sleep(3000);
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(5 * 1000);
 
@@ -219,7 +191,7 @@ public class SinglePubSubTest {
         // System.out.println("failures=" + failures);
         // System.out.println("running qos=" + qos + ", failureLevel=" +
         // failureLevel);
-        System.out.println("@@@ qos=" + qos);
+        //System.out.println("@@@ qos=" + qos);
         // for (int times = 1; times <= 10; times++) {
         // clearCount();
         // for (int i = 0; i < numOfPeers; i++) {
@@ -237,17 +209,17 @@ public class SinglePubSubTest {
         // }
         long start = System.currentTimeMillis();
         e[0].publish("sport/tennis/player1", ("" + start).getBytes(), qos);
-        System.out.println("@@@ e0 published");
+        //System.out.println("@@@ e0 published");
         Thread.sleep(3000);
 
         // for (int i = 1; i < numOfPeers; i++) {
         // fs[i].setErrorRate(0);
         // }
-        System.out.println("running fin");
+        //System.out.println("running fin");
         for (int i = 0; i < numOfPeers; i++) {
             e[i].disconnect();
             e[i].fin();
         }
-        System.out.println("end.");
+        //System.out.println("end.");
     }
 }

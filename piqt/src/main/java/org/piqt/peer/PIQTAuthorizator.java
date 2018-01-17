@@ -1,15 +1,16 @@
 package org.piqt.peer;
 
-import io.moquette.BrokerConstants;
-import io.moquette.server.config.IConfig;
-import io.moquette.spi.impl.security.ACLFileParser;
-import io.moquette.spi.security.IAuthorizator;
-
 import java.io.File;
 import java.text.ParseException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.moquette.BrokerConstants;
+import io.moquette.server.config.IConfig;
+import io.moquette.spi.impl.security.ACLFileParser;
+import io.moquette.spi.impl.subscriptions.Topic;
+import io.moquette.spi.security.IAuthorizator;
 
 public class PIQTAuthorizator implements IAuthorizator {
     private static final Logger logger = LoggerFactory.getLogger(PIQTAuthorizator.class
@@ -31,19 +32,19 @@ public class PIQTAuthorizator implements IAuthorizator {
             }
         }
     }
-    
+
     @Override
-    public boolean canWrite(String topic, String user, String client) {
+    public boolean canRead(Topic topic, String user, String client) {
         if (authorizator != null) {
-            return authorizator.canWrite(topic, user, client);
+            return authorizator.canRead(topic, user, client);
         }
         return true;
     }
 
     @Override
-    public boolean canRead(String topic, String user, String client) {
+    public boolean canWrite(Topic topic, String user, String client) {
         if (authorizator != null) {
-            return authorizator.canRead(topic, user, client);
+            return authorizator.canWrite(topic, user, client);
         }
         return true;
     }

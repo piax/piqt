@@ -10,9 +10,9 @@
 package org.piax.pubsub.stla;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+
+import org.piax.common.Id;
 
 public class LATopic implements Comparable<Object>, Serializable {
     /**
@@ -37,6 +37,12 @@ public class LATopic implements Comparable<Object>, Serializable {
         this.edge = Const.NONE;
     }
     
+    public static LATopic minTopic() {
+        LATopic t = new LATopic(null);
+        t.setId(Id.newId(16).toString());
+        return t;
+    }
+    
     public LATopic topicMin() {
     		LATopic t = new LATopic(this.topic);
         t.cluster = new ClusterId("");
@@ -54,7 +60,7 @@ public class LATopic implements Comparable<Object>, Serializable {
     }
     
     static public LATopic topicMin(String topic) {
-    	LATopic t = new LATopic(topic);
+    	    LATopic t = new LATopic(topic);
         t.cluster = new ClusterId("");
         t.cedge = Const.CMAX;
         t.edge = Const.MIN;
@@ -131,7 +137,7 @@ public class LATopic implements Comparable<Object>, Serializable {
 	@Override
     public boolean equals(Object o) {
 		LATopic arg = (LATopic)o;
-		return topic.equals(arg.topic);
+		return (topic == null && arg.topic == null ) || topic.equals(arg.topic);
 	}
 
 	@Override
@@ -140,7 +146,19 @@ public class LATopic implements Comparable<Object>, Serializable {
 			return -1;
 		}
 		LATopic arg = (LATopic)o;
-		int ret = topic.compareTo(arg.topic);
+		int ret = 0;
+		if (topic == null) { // null means smallest topic string.
+		    if (arg.topic != null) {
+	            ret = -1;		        
+		    }
+		    // both are null;
+		}
+		else if (arg.topic == null) {
+		    ret = 1;
+		}
+		else {
+		    ret = topic.compareTo(arg.topic);
+		}
 		if (ret != 0) {
 			return ret;
 		}
@@ -247,10 +265,10 @@ public class LATopic implements Comparable<Object>, Serializable {
     
     public String toString() {
         if (edge == Const.NONE && cedge == Const.NONE) {
-            return "(" + topic + "|" + cluster + "|" + id + ")";
+            return "(" + (topic == null ? "(min_topic)" :topic) + "|" + cluster + "|" + id + ")";
         }
         else {
-            return "(" + topic + "|" + (cluster == null? "" : cluster) + "|" + edgeToString(cedge) + "/" + edgeToString(edge) + ")";
+            return "(" + (topic == null ? "(min_topic)" :topic) + "|" + (cluster == null? "" : cluster) + "|" + edgeToString(cedge) + "/" + edgeToString(edge) + ")";
         }
     }
 

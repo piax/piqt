@@ -1,7 +1,14 @@
 package org.piqt.peer;
 
-import static org.piqt.peer.Util.newline;
-import static org.piqt.peer.Util.stackTraceStr;
+import static org.piqt.peer.Util.*;
+
+import java.util.List;
+
+import org.piax.pubsub.MqException;
+import org.piax.pubsub.MqMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
 import io.moquette.interception.messages.InterceptConnectMessage;
@@ -11,14 +18,7 @@ import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.interception.messages.InterceptSubscribeMessage;
 import io.moquette.interception.messages.InterceptUnsubscribeMessage;
 import io.moquette.spi.impl.subscriptions.Subscription;
-
-import java.io.UnsupportedEncodingException;
-import java.util.List;
-
-import org.piax.pubsub.MqException;
-import org.piax.pubsub.MqMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.buffer.ByteBuf;
 
 public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHandler {
 
@@ -52,19 +52,18 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
     @Override
     public void onPublish(InterceptPublishMessage msg) {
         logger.info("topic=" + msg.getTopicName() + " qos=" + msg.getQos());
-        byte[] byteArray = new byte[msg.getPayload().remaining()];
-        msg.getPayload().get(byteArray);
-        String payload = "";
-        try {
-            payload = new String(byteArray, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            logger.debug("Failed to convert byte[] -> String. " + newline
-                    + stackTraceStr(e));
+        ByteBuf buf = msg.getPayload();
+        byte[] bytes;
+        int length = buf.readableBytes();
+        if (buf.hasArray()) { // if the buffer has array, use it directly.
+            bytes = buf.array();
+        } else {
+            bytes = new byte[length];
+            buf.getBytes(buf.readerIndex(), bytes);
         }
-        logger.debug("msg=" + payload);
         try {
-            engine.publish(msg.getTopicName(), msg.getClientID(), byteArray, 
-                    msg.getQos().byteValue(), msg.isRetainFlag());
+            engine.publish(msg.getTopicName(), msg.getClientID(), bytes, 
+                    msg.getQos().value(), msg.isRetainFlag());
             stats.publishedMessages++;
         } catch (MqException e) {
             logger.error("Failed to publish." + newline + stackTraceStr(e));
@@ -82,7 +81,8 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
         } catch (MqException e) {
             logger.error("Failed to subscribe." + newline + stackTraceStr(e));
         }
-        stats.subscribe(msg.getClientID(), msg.getTopicFilter(), msg.getRequestedQos(), true);
+        stats.subscribe(msg.getClientID(), msg.getTopicFilter(),
+                msg.getRequestedQos().value(), true);
     }
     
     @Override
@@ -118,7 +118,7 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
     @Override
     public void onOpen(List<Subscription> subscriptions) {
         subscriptions.stream().forEach(s -> {
-            stats.subscribe(s.getClientId(), s.getTopicFilter(), s.getRequestedQos(), false);
+            stats.subscribe(s.getClientId(), s.getTopicFilter().toString(), s.getRequestedQos().value(), false);
         });
     }
 
@@ -131,6 +131,18 @@ public class Observer implements InterceptHandler, PeerHandler, SessionsStoreHan
     public void onConnectionLost(InterceptConnectionLostMessage msg) {
         logger.info("clientID=" + msg.getClientID());
         stats.down(msg.getClientID());
+    }
+
+    @Override
+    public String getID() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Class<?>[] getInterceptedMessageTypes() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }
