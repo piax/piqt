@@ -10,12 +10,12 @@
  */
 package org.piqt.test;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.common.Destination;
 import org.piax.gtrans.ov.suzaku.Suzaku;
