@@ -1,7 +1,5 @@
 package org.piqt.peer;
 
-import io.moquette.parser.proto.messages.AbstractMessage.QOSType;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,8 +8,8 @@ import net.arnx.jsonic.JSON;
 public class Statistics {
     public class Subscription {
         public String topicFilter;
-        public QOSType qos;
-        public Subscription(String topicFilter, QOSType qos) {
+        public int qos;
+        public Subscription(String topicFilter, int qos) {
             this.topicFilter = topicFilter;
             this.qos = qos;
         }
@@ -69,7 +67,7 @@ public class Statistics {
         return false;
     }
     
-    public void subscribe(String clientId, String topicFilter, QOSType qos, boolean isActive) {
+    public void subscribe(String clientId, String topicFilter, int qos, boolean isActive) {
         boolean found = false;
         for (ClientStatistics cs : clients) {
             if (cs.clientID.equals(clientId)) {
@@ -132,7 +130,7 @@ public class Statistics {
     
     static public void main(String[] args) {
         Statistics stats = new Statistics();
-        stats.subscribe("x", "/a/b", QOSType.LEAST_ONE, true);
+        stats.subscribe("x", "/a/b", 1, true);
         System.out.println(stats.subscribed("/a/b"));
         System.out.println(stats.subscribed("a/b"));
         System.out.println(stats.dump());

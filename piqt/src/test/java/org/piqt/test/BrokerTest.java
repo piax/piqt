@@ -9,7 +9,7 @@
  */
 package org.piqt.test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,7 +21,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttClientPersistence;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class BrokerTest {
 
@@ -117,10 +117,10 @@ public class BrokerTest {
             publish(c1);
             Thread.sleep(1000);
             System.out.println(mmc2.getCount());
-            assertTrue(mmc2.getCount() == 1);
+            assertEquals(1,mmc2.getCount());
             
             System.out.println(mmc1.getCount());
-            assertTrue(mmc1.getCount() == 0);
+            assertEquals(0,mmc1.getCount());
         }
         finally {
             close(c1);

@@ -23,6 +23,7 @@ import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
+import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -43,7 +44,7 @@ public class PeerMqEngine implements MqEngine,
             .getLogger(PeerMqEngine.class);
     protected PeerId pid;
     protected String seed;
-    protected Overlay<Destination, LATKey> o;
+    protected Suzaku<Destination, LATKey> o;
     protected MqCallback callback;
     protected Delegator<Endpoint> d;
     protected String host;
@@ -61,7 +62,7 @@ public class PeerMqEngine implements MqEngine,
     ConcurrentHashMap<Integer, PeerMqDeliveryToken> tokens = new ConcurrentHashMap<>();
     ConcurrentHashMap<String, NearestDelegator> delegateCache = new ConcurrentHashMap<>();
 
-    public PeerMqEngine(Overlay<Destination, LATKey> overlay)
+    public PeerMqEngine(Suzaku<Destination, LATKey> overlay)
             throws MqException {
         subscribes = new ArrayList<MqTopic>();
         joinedKeys = new ArrayList<LATKey>();
@@ -281,6 +282,7 @@ public class PeerMqEngine implements MqEngine,
                 }
                 o.addKey(key);
                 joinedKeys.add(key);
+                logger.debug("joined to {}", key);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -355,7 +357,7 @@ public class PeerMqEngine implements MqEngine,
     }
 
     public void setOverlay(Overlay<Destination, LATKey> o) {
-        this.o = o;
+        this.o = (Suzaku<Destination, LATKey>)o;
     }
 
     @Override
@@ -394,32 +396,60 @@ public class PeerMqEngine implements MqEngine,
     public Object onReceiveRequest(Overlay<Destination, LATKey> ov,
             OverlayReceivedMessage<LATKey> rmsg) {
         Object msg = rmsg.getMessage();
+        logger.debug("{} onReceiveRequest rmsg={}", o.getPeerId(), msg);
         if (msg instanceof ControlMessage) {// requested by findDelegators.
             ControlMessage c = (ControlMessage) msg;
             String searchTopic = c.kString;
             boolean noMatch = true;
-            for (LATKey key : rmsg.getMatchedKeys()) {
-                if (searchTopic.equals(key.getKey().topic)) {
-                    logger.debug("searchTopic found: '{}'", searchTopic);
-                    noMatch = false;
+            Destination matchedKey = null;
+
+            for (Destination key : rmsg.getMatchedKeys()) {
+                matchedKey = key;
+                if (key instanceof LATKey) {
+                    LATKey lkey = (LATKey) key;
+                    if (searchTopic.equals(lkey.getKey().topic)) {
+                        logger.debug("searchTopic found: '{}'", searchTopic);
+                        noMatch = false;
+                    }
+                    else {
+                        logger.debug("searchTopic not found on {} for '{}'", key, searchTopic);
+                    }
+                }
+                else {
+                    logger.debug("peer id was found on {} for '{}'", key, searchTopic);
                 }
             }
             if (noMatch) {
-                // XXX appropriate delegator cannot be found if there is no engine lower than a LATKey.
+                // appropriate delegator was not found.
                 // ex.if t1.id2 and t2.id4 are joined,
                 // a query from t2.id3 matches to t1.id2.
-                // then, we need to forward it to the next neighbor tobic (TODO).
-                // the current implementation returns null.
-                
-                return null; // the topic did not match. null return. 
+                // then, we need to forward it to the next neighbor topic.
+                assert matchedKey != null;
+                Link right = o.getRight((Comparable<?>) matchedKey);
+                LATKey rightKey = null;
+                if (right.key.getRawKey() instanceof LATKey) {
+                    rightKey = (LATKey) right.key.getRawKey();
+                }
+                if (rightKey != null && searchTopic.equals(rightKey.getKey().topic)) {
+                    // delegate to right node.
+                    // (if right node also matches, the delivery duplicates.) 
+                    logger.debug("right node {} matches to topic '{}', forward.", right.addr, rightKey);
+                    ((Transport<Endpoint>)o.getLowerTransport()).sendAsync(new TransportId("delegate"), 
+                            right.addr, c); 
+                    return right.addr;
+                }
+                else {
+                    logger.debug("{} was received by matching {} but not matched.", c.kString, rmsg.getMatchedKeys());
+                    return null; // the topic did not match. null return.
+                }
             }
-            
+            logger.debug("delegating {} for {}", c.kString, rmsg.getMatchedKeys());
             d.delegate(c); // when completed, succeeded is send to sender 
             logger.debug("received control message: {} on {}", c, getPeerId());
             return getEndpoint();
         }
 
-        MqMessage m = (MqMessage) rmsg.getMessage();
+        MqMessage m = (MqMessage) msg;
         try {
             for (MqTopic t : subscribes) {
                 if (t.matchesToTopic(m.getTopic())) {

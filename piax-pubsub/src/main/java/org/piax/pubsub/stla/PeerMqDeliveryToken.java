@@ -82,6 +82,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
             }
             else {
                 DeliveryDelegator d = new DeliveryDelegator(kStrings[i]);
+                delegators.put(kStrings[i], d);
                 findDelegatorAndDeliver(d, engine, kStrings[i]);
             }
         }
@@ -97,23 +98,27 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
             if (engine.getClusterId() == null) {
                 lat = LATopic.clusterMax(lat);
             } else {
-                lat.setClusterId(engine.getClusterId());
+                lat.setClusterId(engine.getClusterId()); // min of the cluster id
             }
+            logger.debug("finding delegator for '{}'", kString);
             o.requestAsync(new Lower<LATKey>(false, new LATKey(lat), 1),
                             new ControlMessage(engine.getEndpoint(), seqNo, kString, m),
                             (ep, ex) -> {
                                 if (Response.EOR.equals(ep)) {
-                                    // cache the delegator whatever the result is.
-                                    engine.foundDelegator(kString, d);
                                     logger.debug("EOR. delegator for '{}' finished", kString);
                                 }
                                 else if (ex == null) {
                                     // the result can be null
                                     d.setEndpoint((Endpoint) ep);
-                                    logger.debug("EOR. delegator for '{}' is {}", kString, ep);
+                                    logger.debug("delegator for '{}' is {}", kString, ep);
                                     if (ep == null) { // finish because not found.
                                         d.setSucceeded();
                                         delegationFinished();
+                                    }
+                                    else {
+                                        // cache the delegator if found.
+                                        engine.foundDelegator(kString, d);
+                                        // not finish because delivery is going on.
                                     }
                                 }
                                 else {
@@ -134,7 +139,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
     boolean isAllDelegationCompleted() {
         for (DeliveryDelegator d : delegators.values()) {
             if (!d.isFinished()) {
-                logger.debug("delegationCompleted: not finished: {}", d.getKeyString());
+                logger.debug("delegationCompleted: not finished: '{}'", d.getKeyString());
                 return false;
             }
         }
@@ -152,7 +157,7 @@ public class PeerMqDeliveryToken implements MqDeliveryToken {
             d.setSucceeded();
         }
         else {
-            logger.debug("delegationCSucceeded: not found {}", kString);
+            logger.debug("delegationSucceeded: not found {}", kString);
         }
         delegationFinished();
     }

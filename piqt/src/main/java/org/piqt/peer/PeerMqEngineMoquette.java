@@ -14,7 +14,6 @@ import static org.piqt.peer.Util.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
@@ -30,9 +29,12 @@ import org.piax.pubsub.stla.PeerMqEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.moquette.parser.proto.messages.AbstractMessage;
-import io.moquette.parser.proto.messages.PublishMessage;
 import io.moquette.spi.impl.ProtocolProcessor;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.mqtt.MqttMessageBuilders;
+import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import io.netty.handler.codec.mqtt.MqttQoS;
 
 public class PeerMqEngineMoquette extends PeerMqEngine {
     private static final Logger logger = LoggerFactory
@@ -123,14 +125,16 @@ public class PeerMqEngineMoquette extends PeerMqEngine {
             }
         }
         if (c != null) {
-            PublishMessage msg = new PublishMessage();
-            msg.setRetainFlag(m.isRetained());
-            msg.setTopicName(m.getTopic());
-            msg.setQos(AbstractMessage.QOSType.valueOf((byte) m.getQos()));
-            msg.setPayload(ByteBuffer.wrap(m.getPayload()));
-            msg.setLocal(false);
-            msg.setClientId(c);
-            moquette.server.internalPublish(msg);
+            ByteBuf buf = Unpooled.wrappedBuffer(m.getPayload());
+            MqttPublishMessage msg = MqttMessageBuilders.publish()
+                    .retained(m.isRetained())
+                    .topicName(m.getTopic())
+                    .qos(MqttQoS.valueOf(m.getQos()))
+                    .payload(buf).build();
+            // XXX how can we propergate?
+            // msg.setLocal(false);
+            logger.debug("internal publish: {}", msg);
+            moquette.server.internalPublish(msg, c);
             observer.onReceive(m);
         }
     }

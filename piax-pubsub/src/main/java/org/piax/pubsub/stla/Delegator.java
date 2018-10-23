@@ -71,6 +71,15 @@ public class Delegator<E extends Endpoint> {
             this.content = null;
             this.reasonCode = (short) -1;
         }
+        public String toString() {
+            String ret = "[";
+            ret += this.tokenId + "," +
+                    this.kString + "," +
+                    this.source + "," +
+                    this.content + "," +
+                    this.reasonCode + "]";
+            return ret;
+        }
     }
 
     public Delegator(PeerMqEngine engine) throws IdConflictException,
@@ -90,7 +99,7 @@ public class Delegator<E extends Endpoint> {
         int tokenId = c.tokenId;
         String kString = c.kString;
         Serializable message = c.content;
-        logger.debug("peer {} starting dissemination for kString:{}", engine.getPeerId(), kString);
+        logger.debug("peer {} starting dissemination for kString:{} msg:{}", engine.getPeerId(), kString, message);
         Transport<Endpoint> trans =((Transport<Endpoint>)engine.getOverlay().getLowerTransport());
         
         if (FOLLOW_DELEGATOR_SUBSCRIPTION.value()) {
