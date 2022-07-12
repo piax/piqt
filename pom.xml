@@ -9,10 +9,9 @@
   <url>http://www.piqt.org/</url>
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
+  <groupId>junit</groupId>
+  <artifactId>junit</artifactId>
+  <version>[4.13.1,)</version>
     </dependency>
   </dependencies>
   <modules>
